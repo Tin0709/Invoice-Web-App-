@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import "../styles/invoice.css";
+import {
+  getInvoiceByPeriod,
+  getPreviousInvoice,
+  updateRoomInfo,
+  upsertInvoiceForRoom,
+} from "../utils/storage";
 
 /* =========================
    Helpers
@@ -44,36 +50,6 @@ const daysInMonth = (year, month) => {
   const m = Number(month);
   if (!y || !m) return 31;
   return new Date(y, m, 0).getDate();
-};
-
-const getPrevPeriod = (year, month) => {
-  const y = Number(year);
-  const m = Number(month);
-  if (!y || !m) return "";
-  if (m === 1) return `${y - 1}-12`;
-  return `${y}-${String(m - 1).padStart(2, "0")}`;
-};
-
-/* =========================
-   LocalStorage
-========================= */
-const makeKey = (room, period) => `motel:bill:${room}:${period}`;
-
-const loadBill = (room, period) => {
-  try {
-    const raw = localStorage.getItem(makeKey(room, period));
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-};
-
-const saveBill = (room, period, data) => {
-  try {
-    localStorage.setItem(makeKey(room, period), JSON.stringify(data));
-  } catch {
-    // ignore
-  }
 };
 
 /* =========================
@@ -300,7 +276,7 @@ function FixedFeesBlock({ f, setMoneyField }) {
 /* =========================
    Main component
 ========================= */
-export default function Invoice() {
+export default function Invoice({ blockId, roomId, roomData }) {
   const [view, setView] = useState("invoice");
 
   const [meta, setMeta] = useState(() => {
@@ -308,7 +284,12 @@ export default function Invoice() {
     const yyyy = now.getFullYear();
     const mm = String(now.getMonth() + 1).padStart(2, "0");
     const dd = String(now.getDate()).padStart(2, "0");
-    return { room: "", tenant: "", date: `${yyyy}-${mm}-${dd}` };
+
+    return {
+      room: roomData?.roomName || "",
+      tenant: roomData?.tenantName || "",
+      date: `${yyyy}-${mm}-${dd}`,
+    };
   });
 
   const {
@@ -319,17 +300,13 @@ export default function Invoice() {
 
   const [monthText, setMonthText] = useState(month);
   const [yearText, setYearText] = useState(year);
-  const [roomText, setRoomText] = useState(meta.room);
-
-  const period = useMemo(
-    () => (year && month ? `${year}-${month}` : ""),
-    [year, month]
-  );
-  const prevPeriod = useMemo(() => getPrevPeriod(year, month), [year, month]);
+  const [roomText, setRoomText] = useState(roomData?.roomName || "");
 
   const [f, setF] = useState({
-    rentAmount: "",
-    trashUnit: "15.000",
+    rentAmount: roomData?.defaultRent ? fmtVND(roomData.defaultRent) : "",
+    trashUnit: roomData?.defaultTrash
+      ? fmtVND(roomData.defaultTrash)
+      : "15.000",
     elecOld: "",
     elecNew: "",
     elecUnit: "3.200",
@@ -358,18 +335,14 @@ export default function Invoice() {
     const waterAmount = waterUsed * waterUnit;
 
     const total = rent + trashAmount + elecAmount + waterAmount;
-
     const paid = parseMoney(f.paid);
     const debt = clampNonNegative(total - paid);
 
     return {
       rent,
-      trashUnit,
       trashAmount,
-      elecUnit,
       elecUsed,
       elecAmount,
-      waterUnit,
       waterUsed,
       waterAmount,
       total,
@@ -378,18 +351,25 @@ export default function Invoice() {
     };
   }, [f]);
 
-  const roomKey = meta.room.trim();
+  const setMetaField = (field) => (e) => {
+    const value = e.target.value;
+    setMeta((s) => ({ ...s, [field]: value }));
+  };
 
-  const setMetaField = (key) => (e) =>
-    setMeta((s) => ({ ...s, [key]: e.target.value }));
+  const setDate = (e) => {
+    const value = e.target.value;
+    setMeta((s) => ({ ...s, date: value }));
+  };
 
-  const setDate = (e) => setMeta((s) => ({ ...s, date: e.target.value }));
+  const setDigitsField = (field) => (e) => {
+    const value = digits(e.target.value);
+    setF((s) => ({ ...s, [field]: value }));
+  };
 
-  const setDigitsField = (key) => (e) =>
-    setF((s) => ({ ...s, [key]: onlyDigits(e.target.value) }));
-
-  const setMoneyField = (key) => (e) =>
-    setF((s) => ({ ...s, [key]: formatMoneyInput(e.target.value) }));
+  const setMoneyField = (field) => (e) => {
+    const value = formatMoneyInput(e.target.value);
+    setF((s) => ({ ...s, [field]: value }));
+  };
 
   const commitMonth = () => {
     const raw = onlyDigits(monthText).slice(0, 2);
@@ -398,9 +378,7 @@ export default function Invoice() {
       return;
     }
 
-    const mmNum = Math.min(Math.max(parseInt(raw, 10), 1), 12);
-    const mm = String(mmNum).padStart(2, "0");
-
+    const mm = String(Math.min(Math.max(Number(raw), 1), 12)).padStart(2, "0");
     const baseYear = year || String(new Date().getFullYear());
     const maxD = daysInMonth(baseYear, mm);
     const dd = String(Math.min(Number(day || 1), maxD)).padStart(2, "0");
@@ -429,76 +407,85 @@ export default function Invoice() {
     const next = roomText.trim();
     setMeta((s) => ({ ...s, room: next }));
     setRoomText(next);
+
+    if (blockId && roomId) {
+      updateRoomInfo(blockId, roomId, { roomName: next });
+    }
   };
 
   const isHydratingRef = useRef(false);
   const lastHydratedKeyRef = useRef("");
 
   useEffect(() => {
-    if (!roomKey || !period) return;
+    if (!blockId || !roomId || !roomData || !year || !month) return;
 
-    const hydrateKey = `${roomKey}:${period}`;
+    const hydrateKey = `${roomId}:${year}-${month}`;
     if (lastHydratedKeyRef.current === hydrateKey) return;
     lastHydratedKeyRef.current = hydrateKey;
 
-    const saved = loadBill(roomKey, period);
-    const prev = prevPeriod ? loadBill(roomKey, prevPeriod) : null;
+    const currentInvoice = getInvoiceByPeriod(roomData, year, month);
+    const prevInvoice = getPreviousInvoice(roomData, year, month);
 
     isHydratingRef.current = true;
 
-    Promise.resolve().then(() => {
-      setF(() => {
-        if (saved) {
-          return {
-            rentAmount: saved.rentAmount ?? "",
-            trashUnit: saved.trashUnit ?? "15.000",
-            elecOld: digits(saved.elecOld),
-            elecNew: digits(saved.elecNew),
-            elecUnit: saved.elecUnit ?? "3.200",
-            waterOld: digits(saved.waterOld),
-            waterNew: digits(saved.waterNew),
-            waterUnit: saved.waterUnit ?? "12.000",
-            paid: saved.paid ?? "",
-          };
-        }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMeta((prev) => ({
+      ...prev,
+      room: roomData.roomName || prev.room,
+      tenant: currentInvoice?.tenantName || roomData.tenantName || prev.tenant,
+    }));
 
-        const prevElecNew = prev?.elecNew ?? "";
-        const prevWaterNew = prev?.waterNew ?? "";
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setRoomText(roomData.roomName || "");
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setF(() => {
+      if (currentInvoice) {
         return {
-          rentAmount: prev?.rentAmount ?? "",
-          trashUnit: prev?.trashUnit ?? "15.000",
-          elecOld: prevElecNew ? digits(prevElecNew) : "",
-          elecNew: "",
-          elecUnit: prev?.elecUnit ?? "3.200",
-          waterOld: prevWaterNew ? digits(prevWaterNew) : "",
-          waterNew: "",
-          waterUnit: prev?.waterUnit ?? "12.000",
-          paid: "",
+          rentAmount:
+            currentInvoice.rentAmount ?? fmtVND(roomData.defaultRent || 0),
+          trashUnit:
+            currentInvoice.trashUnit ?? fmtVND(roomData.defaultTrash || 15000),
+          elecOld: digits(currentInvoice.elecOld),
+          elecNew: digits(currentInvoice.elecNew),
+          elecUnit: currentInvoice.elecUnit ?? "3.200",
+          waterOld: digits(currentInvoice.waterOld),
+          waterNew: digits(currentInvoice.waterNew),
+          waterUnit: currentInvoice.waterUnit ?? "12.000",
+          paid: currentInvoice.paid ?? "",
         };
-      });
-
-      if (saved?.tenant != null) {
-        setMeta((m) => ({ ...m, tenant: saved.tenant ?? "" }));
-      } else if (prev?.tenant) {
-        setMeta((m) => ({
-          ...m,
-          tenant: m.tenant || prev.tenant,
-        }));
       }
 
-      setTimeout(() => {
-        isHydratingRef.current = false;
-      }, 0);
+      return {
+        rentAmount: fmtVND(roomData.defaultRent || 0),
+        trashUnit: fmtVND(roomData.defaultTrash || 15000),
+        elecOld: prevInvoice?.elecNew ? digits(prevInvoice.elecNew) : "",
+        elecNew: "",
+        elecUnit: prevInvoice?.elecUnit ?? "3.200",
+        waterOld: prevInvoice?.waterNew ? digits(prevInvoice.waterNew) : "",
+        waterNew: "",
+        waterUnit: prevInvoice?.waterUnit ?? "12.000",
+        paid: "",
+      };
     });
-  }, [roomKey, period, prevPeriod]);
+
+    const timer = setTimeout(() => {
+      isHydratingRef.current = false;
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [blockId, roomId, roomData, year, month]);
 
   useEffect(() => {
-    if (!roomKey || !period) return;
+    if (!blockId || !roomId || !year || !month) return;
     if (isHydratingRef.current) return;
 
-    saveBill(roomKey, period, {
-      tenant: meta.tenant,
+    upsertInvoiceForRoom(blockId, roomId, {
+      year: Number(year),
+      month: Number(month),
+      roomName: meta.room,
+      tenantName: meta.tenant,
+      date: meta.date,
       rentAmount: f.rentAmount,
       trashUnit: f.trashUnit,
       elecOld: f.elecOld,
@@ -510,11 +497,18 @@ export default function Invoice() {
       paid: f.paid,
       updatedAt: Date.now(),
     });
-  }, [roomKey, period, meta.tenant, f]);
+
+    updateRoomInfo(blockId, roomId, {
+      roomName: meta.room,
+      tenantName: meta.tenant,
+      defaultRent: parseMoney(f.rentAmount),
+      defaultTrash: parseMoney(f.trashUnit),
+    });
+  }, [blockId, roomId, year, month, meta, f]);
 
   const applyPrevOld = () => {
-    if (!roomKey || !prevPeriod) return;
-    const prev = loadBill(roomKey, prevPeriod);
+    if (!roomData || !year || !month) return;
+    const prev = getPreviousInvoice(roomData, year, month);
     if (!prev) return;
 
     setF((s) => ({
@@ -527,13 +521,13 @@ export default function Invoice() {
   const resetNumbers = () => {
     setF((s) => ({
       ...s,
-      rentAmount: "",
+      rentAmount: fmtVND(roomData?.defaultRent || 0),
       elecOld: "",
       elecNew: "",
       waterOld: "",
       waterNew: "",
       paid: "",
-      trashUnit: "15.000",
+      trashUnit: fmtVND(roomData?.defaultTrash || 15000),
       elecUnit: "3.200",
       waterUnit: "12.000",
     }));
@@ -744,9 +738,12 @@ export default function Invoice() {
               </div>
 
               <footer className="invoice-footer">
-                <div>Dữ liệu đang lưu tạm trong máy (localStorage).</div>
                 <div>
-                  Phòng {meta.room || "—"} • {period || "—"}
+                  Dữ liệu đang lưu trong hệ thống dãy/phòng (localStorage).
+                </div>
+                <div>
+                  Phòng {meta.room || "—"} •{" "}
+                  {year && month ? `${year}-${month}` : "—"}
                 </div>
               </footer>
             </>

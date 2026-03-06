@@ -34,7 +34,7 @@ export default function InvoicePage() {
         </div>
       </div>
 
-      <Invoice />
+      <Invoice blockId={blockId} roomId={roomId} roomData={room} />
     </div>
   );
 }

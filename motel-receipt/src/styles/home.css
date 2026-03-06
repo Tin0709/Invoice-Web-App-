@@ -414,3 +414,29 @@
     transform: translateY(0) scale(1);
   }
 }
+.room-debt.debt {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+.room-debt.ok {
+  color: #15803d;
+  font-weight: 700;
+}
+
+.history-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.home-history-link {
+  text-decoration: none;
+  color: #4338ca;
+  font-weight: 700;
+  background: #eef2ff;
+  padding: 10px 14px;
+  border-radius: 12px;
+}

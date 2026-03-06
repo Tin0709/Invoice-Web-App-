@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import "../styles/home.css";
 import {
+  formatCurrency,
+  getAllInvoicesFlat,
+  getInvoiceDebt,
+  getLatestInvoice,
   loadData,
   saveData,
-  formatCurrency,
-  sortInvoicesDesc,
 } from "../utils/storage";
 
 function formatMoneyInput(value) {
@@ -237,24 +239,7 @@ export default function HomePage() {
   }, [data.blocks, search]);
 
   const recentInvoices = useMemo(() => {
-    const all = [];
-
-    data.blocks.forEach((block) => {
-      block.rooms.forEach((room) => {
-        room.invoices.forEach((invoice) => {
-          all.push({
-            ...invoice,
-            blockId: block.id,
-            roomId: room.id,
-            blockName: block.name,
-            roomName: room.roomName,
-            tenantName: room.tenantName,
-          });
-        });
-      });
-    });
-
-    return sortInvoicesDesc(all).slice(0, 12);
+    return getAllInvoicesFlat(data).slice(0, 6);
   }, [data]);
 
   return (
@@ -336,37 +321,49 @@ export default function HomePage() {
                     {isOpen && (
                       <div className="block-content">
                         <div className="room-grid">
-                          {block.rooms.map((room) => (
-                            <div className="room-card" key={room.id}>
-                              <Link
-                                className="room-main"
-                                to={`/invoice/${block.id}/${room.id}`}
-                              >
-                                <h3>{room.roomName}</h3>
-                                <p>{room.tenantName}</p>
-                                <div className="room-meta">
-                                  <span>
-                                    Tiền phòng:{" "}
-                                    {formatCurrency(room.defaultRent)} đ
-                                  </span>
-                                  <span>
-                                    Rác: {formatCurrency(room.defaultTrash)} đ
-                                  </span>
-                                </div>
-                              </Link>
+                          {block.rooms.map((room) => {
+                            const latestInvoice = getLatestInvoice(room);
+                            const latestDebt = getInvoiceDebt(latestInvoice);
 
-                              <div className="room-actions">
-                                <button
-                                  className="danger-btn small-btn"
-                                  onClick={() =>
-                                    handleDeleteRoom(block.id, room.id)
-                                  }
+                            return (
+                              <div className="room-card" key={room.id}>
+                                <Link
+                                  className="room-main"
+                                  to={`/invoice/${block.id}/${room.id}`}
                                 >
-                                  Xoá
-                                </button>
+                                  <h3>{room.roomName}</h3>
+                                  <p>{room.tenantName}</p>
+                                  <div className="room-meta">
+                                    <span>
+                                      Tiền phòng:{" "}
+                                      {formatCurrency(room.defaultRent)} đ
+                                    </span>
+                                    <span
+                                      className={
+                                        latestDebt > 0
+                                          ? "room-debt debt"
+                                          : "room-debt ok"
+                                      }
+                                    >
+                                      Tiền còn thiếu:{" "}
+                                      {formatCurrency(latestDebt)} đ
+                                    </span>
+                                  </div>
+                                </Link>
+
+                                <div className="room-actions">
+                                  <button
+                                    className="danger-btn small-btn"
+                                    onClick={() =>
+                                      handleDeleteRoom(block.id, room.id)
+                                    }
+                                  >
+                                    Xoá
+                                  </button>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
 
                           {!isAddRoomOpen && (
                             <button
@@ -471,8 +468,14 @@ export default function HomePage() {
           </section>
 
           <section className="history-section card">
-            <div className="section-title">
-              <h2>Lịch sử phiếu gần đây</h2>
+            <div className="history-head">
+              <div className="section-title">
+                <h2>Lịch sử phiếu gần đây</h2>
+              </div>
+
+              <Link className="home-history-link" to="/history">
+                Xem tất cả / Quản lí lịch sử
+              </Link>
             </div>
 
             {recentInvoices.length === 0 ? (

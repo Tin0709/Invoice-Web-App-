@@ -77,7 +77,7 @@ const saveBill = (room, period, data) => {
 };
 
 /* =========================
-   Child blocks moved OUTSIDE
+   Child blocks
 ========================= */
 function MetersBlock({
   compact = false,
@@ -343,15 +343,6 @@ export default function Invoice() {
   const [yearText, setYearText] = useState(year);
   const [roomText, setRoomText] = useState(meta.room);
 
-  useEffect(() => {
-    setMonthText(month);
-    setYearText(year);
-  }, [month, year]);
-
-  useEffect(() => {
-    setRoomText(meta.room);
-  }, [meta.room]);
-
   const period = useMemo(
     () => (year && month ? `${year}-${month}` : ""),
     [year, month]
@@ -514,8 +505,11 @@ export default function Invoice() {
 
       if (saved?.tenant != null) {
         setMeta((m) => ({ ...m, tenant: saved.tenant ?? "" }));
-      } else if (prev?.tenant && !meta.tenant) {
-        setMeta((m) => ({ ...m, tenant: prev.tenant }));
+      } else if (prev?.tenant) {
+        setMeta((m) => ({
+          ...m,
+          tenant: m.tenant || prev.tenant,
+        }));
       }
 
       setTimeout(() => {

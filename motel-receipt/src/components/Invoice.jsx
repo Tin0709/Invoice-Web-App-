@@ -718,7 +718,7 @@ export default function Invoice() {
                 <div className="totals">
                   <div className="row total">
                     <div className="k">TỔNG CỘNG:</div>
-                    <div className="v">{fmtVND(calc.total)}</div>
+                    <div className="v">{fmtVND(calc.total)} VND</div>
                   </div>
 
                   <div className="row">

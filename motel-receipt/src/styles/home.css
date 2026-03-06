@@ -1,0 +1,284 @@
+.home-page {
+  min-height: 100vh;
+  background: #f5f7fb;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.home-shell {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.home-header {
+  margin-bottom: 20px;
+}
+
+.home-header h1 {
+  margin: 0 0 8px;
+  font-size: 32px;
+  color: #1f2937;
+}
+
+.home-header p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 15px;
+}
+
+.card {
+  background: #ffffff;
+  border-radius: 18px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+  padding: 18px;
+  box-sizing: border-box;
+}
+
+.home-toolbar {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.toolbar-left,
+.toolbar-right {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.home-toolbar input,
+.add-room-form input {
+  width: 100%;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid #d7deea;
+  border-radius: 12px;
+  outline: none;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.home-toolbar input:focus,
+.add-room-form input:focus {
+  border-color: #4f46e5;
+}
+
+.home-toolbar button,
+.add-room-form button,
+.ghost-btn,
+.danger-btn {
+  border: none;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.home-toolbar button,
+.add-room-form button {
+  background: #4f46e5;
+  color: white;
+}
+
+.ghost-btn {
+  background: #eef2ff;
+  color: #3730a3;
+}
+
+.danger-btn {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.small-btn {
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.blocks-section {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+
+.block-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.block-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 18px;
+}
+
+.block-title-button {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  color: #1f2937;
+  padding: 0;
+}
+
+.room-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6366f1;
+  background: #eef2ff;
+  padding: 8px 10px;
+  border-radius: 999px;
+}
+
+.block-actions {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.block-content {
+  border-top: 1px solid #edf2f7;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.add-room-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr auto;
+  gap: 12px;
+}
+
+.room-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.room-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 14px;
+  background: #fafbff;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.room-main {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.room-main h3 {
+  margin: 0 0 6px;
+  color: #111827;
+  font-size: 18px;
+}
+
+.room-main p {
+  margin: 0 0 10px;
+  color: #6b7280;
+}
+
+.room-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #374151;
+  font-size: 14px;
+}
+
+.room-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.history-section {
+  margin-bottom: 24px;
+}
+
+.section-title h2 {
+  margin: 0 0 12px;
+  font-size: 22px;
+  color: #1f2937;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  text-decoration: none;
+  color: #111827;
+  background: #fafafa;
+}
+
+.history-item strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.history-item span {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.empty-state,
+.history-empty,
+.empty-room {
+  color: #6b7280;
+}
+
+@media (max-width: 980px) {
+  .home-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .toolbar-left,
+  .toolbar-right {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .add-room-form {
+    grid-template-columns: 1fr;
+  }
+
+  .block-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .block-actions {
+    justify-content: flex-end;
+  }
+
+  .history-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

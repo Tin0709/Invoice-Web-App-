@@ -1,6 +1,12 @@
+import { Routes, Route } from "react-router-dom";
+import HomePage from "./pages/HomePage";
 import InvoicePage from "./pages/InvoicePage";
-import "./styles/theme.css";
 
 export default function App() {
-  return <InvoicePage />;
+  return (
+    <Routes>
+      <Route path="/" element={<HomePage />} />
+      <Route path="/invoice/:blockId/:roomId" element={<InvoicePage />} />
+    </Routes>
+  );
 }

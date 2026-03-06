@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "../styles/invoice.css";
 import {
   getInvoiceByPeriod,
@@ -276,7 +276,13 @@ function FixedFeesBlock({ f, setMoneyField }) {
 /* =========================
    Main component
 ========================= */
-export default function Invoice({ blockId, roomId, roomData }) {
+export default function Invoice({
+  blockId,
+  roomId,
+  roomData,
+  onDirtyChange,
+  registerSaveHandler,
+}) {
   const [view, setView] = useState("invoice");
 
   const [meta, setMeta] = useState(() => {
@@ -316,6 +322,9 @@ export default function Invoice({ blockId, roomId, roomData }) {
     paid: "",
   });
 
+  const [saveMessage, setSaveMessage] = useState("");
+  const [lastSavedSnapshot, setLastSavedSnapshot] = useState(null);
+
   const calc = useMemo(() => {
     const rent = parseMoney(f.rentAmount);
 
@@ -350,6 +359,17 @@ export default function Invoice({ blockId, roomId, roomData }) {
       debt,
     };
   }, [f]);
+
+  const buildSnapshot = useCallback(() => {
+    return JSON.stringify({
+      meta,
+      f,
+      year,
+      month,
+      roomId,
+      blockId,
+    });
+  }, [meta, f, year, month, roomId, blockId]);
 
   const setMetaField = (field) => (e) => {
     const value = e.target.value;
@@ -407,10 +427,6 @@ export default function Invoice({ blockId, roomId, roomData }) {
     const next = roomText.trim();
     setMeta((s) => ({ ...s, room: next }));
     setRoomText(next);
-
-    if (blockId && roomId) {
-      updateRoomInfo(blockId, roomId, { roomName: next });
-    }
   };
 
   const isHydratingRef = useRef(false);
@@ -426,22 +442,14 @@ export default function Invoice({ blockId, roomId, roomData }) {
     const currentInvoice = getInvoiceByPeriod(roomData, year, month);
     const prevInvoice = getPreviousInvoice(roomData, year, month);
 
-    isHydratingRef.current = true;
+    const hydratedMeta = {
+      room: roomData.roomName || "",
+      tenant: currentInvoice?.tenantName || roomData.tenantName || "",
+      date: meta.date,
+    };
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setMeta((prev) => ({
-      ...prev,
-      room: roomData.roomName || prev.room,
-      tenant: currentInvoice?.tenantName || roomData.tenantName || prev.tenant,
-    }));
-
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setRoomText(roomData.roomName || "");
-
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setF(() => {
-      if (currentInvoice) {
-        return {
+    const hydratedF = currentInvoice
+      ? {
           rentAmount:
             currentInvoice.rentAmount ?? fmtVND(roomData.defaultRent || 0),
           trashUnit:
@@ -453,58 +461,52 @@ export default function Invoice({ blockId, roomId, roomData }) {
           waterNew: digits(currentInvoice.waterNew),
           waterUnit: currentInvoice.waterUnit ?? "12.000",
           paid: currentInvoice.paid ?? "",
+        }
+      : {
+          rentAmount: fmtVND(roomData.defaultRent || 0),
+          trashUnit: fmtVND(roomData.defaultTrash || 15000),
+          elecOld: prevInvoice?.elecNew ? digits(prevInvoice.elecNew) : "",
+          elecNew: "",
+          elecUnit: prevInvoice?.elecUnit ?? "3.200",
+          waterOld: prevInvoice?.waterNew ? digits(prevInvoice.waterNew) : "",
+          waterNew: "",
+          waterUnit: prevInvoice?.waterUnit ?? "12.000",
+          paid: "",
         };
-      }
 
-      return {
-        rentAmount: fmtVND(roomData.defaultRent || 0),
-        trashUnit: fmtVND(roomData.defaultTrash || 15000),
-        elecOld: prevInvoice?.elecNew ? digits(prevInvoice.elecNew) : "",
-        elecNew: "",
-        elecUnit: prevInvoice?.elecUnit ?? "3.200",
-        waterOld: prevInvoice?.waterNew ? digits(prevInvoice.waterNew) : "",
-        waterNew: "",
-        waterUnit: prevInvoice?.waterUnit ?? "12.000",
-        paid: "",
-      };
+    isHydratingRef.current = true;
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMeta((prev) => ({
+      ...prev,
+      room: hydratedMeta.room || prev.room,
+      tenant: hydratedMeta.tenant || prev.tenant,
+    }));
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setRoomText(roomData.roomName || "");
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setF(hydratedF);
+
+    const nextSnapshot = JSON.stringify({
+      meta: hydratedMeta,
+      f: hydratedF,
+      year,
+      month,
+      roomId,
+      blockId,
     });
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLastSavedSnapshot(nextSnapshot);
 
     const timer = setTimeout(() => {
       isHydratingRef.current = false;
     }, 0);
 
     return () => clearTimeout(timer);
-  }, [blockId, roomId, roomData, year, month]);
-
-  useEffect(() => {
-    if (!blockId || !roomId || !year || !month) return;
-    if (isHydratingRef.current) return;
-
-    upsertInvoiceForRoom(blockId, roomId, {
-      year: Number(year),
-      month: Number(month),
-      roomName: meta.room,
-      tenantName: meta.tenant,
-      date: meta.date,
-      rentAmount: f.rentAmount,
-      trashUnit: f.trashUnit,
-      elecOld: f.elecOld,
-      elecNew: f.elecNew,
-      elecUnit: f.elecUnit,
-      waterOld: f.waterOld,
-      waterNew: f.waterNew,
-      waterUnit: f.waterUnit,
-      paid: f.paid,
-      updatedAt: Date.now(),
-    });
-
-    updateRoomInfo(blockId, roomId, {
-      roomName: meta.room,
-      tenantName: meta.tenant,
-      defaultRent: parseMoney(f.rentAmount),
-      defaultTrash: parseMoney(f.trashUnit),
-    });
-  }, [blockId, roomId, year, month, meta, f]);
+  }, [blockId, roomId, roomData, year, month, meta.date]);
 
   const applyPrevOld = () => {
     if (!roomData || !year || !month) return;
@@ -542,6 +544,80 @@ export default function Invoice({ blockId, roomId, roomData }) {
     window.print();
   };
 
+  const currentSnapshot = buildSnapshot();
+  const isDirty =
+    lastSavedSnapshot !== null && currentSnapshot !== lastSavedSnapshot;
+
+  useEffect(() => {
+    if (typeof onDirtyChange === "function") {
+      onDirtyChange(isDirty);
+    }
+  }, [isDirty, onDirtyChange]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (!isDirty) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty]);
+
+  const handleSave = useCallback(async () => {
+    if (!blockId || !roomId || !year || !month) return false;
+
+    upsertInvoiceForRoom(blockId, roomId, {
+      year: Number(year),
+      month: Number(month),
+      roomName: meta.room,
+      tenantName: meta.tenant,
+      date: meta.date,
+      rentAmount: f.rentAmount,
+      trashUnit: f.trashUnit,
+      elecOld: f.elecOld,
+      elecNew: f.elecNew,
+      elecUnit: f.elecUnit,
+      waterOld: f.waterOld,
+      waterNew: f.waterNew,
+      waterUnit: f.waterUnit,
+      paid: f.paid,
+      updatedAt: Date.now(),
+    });
+
+    updateRoomInfo(blockId, roomId, {
+      roomName: meta.room,
+      tenantName: meta.tenant,
+      defaultRent: parseMoney(f.rentAmount),
+      defaultTrash: parseMoney(f.trashUnit),
+    });
+
+    const snapshotAfterSave = JSON.stringify({
+      meta,
+      f,
+      year,
+      month,
+      roomId,
+      blockId,
+    });
+
+    setLastSavedSnapshot(snapshotAfterSave);
+    setSaveMessage("Đã lưu phiếu thành công.");
+
+    setTimeout(() => {
+      setSaveMessage("");
+    }, 1800);
+
+    return true;
+  }, [blockId, roomId, year, month, meta, f]);
+
+  useEffect(() => {
+    if (typeof registerSaveHandler === "function") {
+      registerSaveHandler(() => handleSave);
+    }
+  }, [registerSaveHandler, handleSave]);
+
   return (
     <>
       <div className="topbar">
@@ -552,9 +628,16 @@ export default function Invoice({ blockId, roomId, roomData }) {
         </div>
 
         <div className="actions">
+          {saveMessage && <div className="save-badge">{saveMessage}</div>}
+
+          <button className="btn success" type="button" onClick={handleSave}>
+            💾 Lưu
+          </button>
+
           <button className="btn" type="button" onClick={resetNumbers}>
             ↺ Reset
           </button>
+
           <button className="btn primary" type="button" onClick={doPrint}>
             🖨️ In / PDF
           </button>
@@ -706,7 +789,7 @@ export default function Invoice({ blockId, roomId, roomData }) {
                   <br />
                   2) Nhập số mới → tự tính tiền.
                   <br />
-                  3) Bấm In/PDF để xuất.
+                  3) Bấm Lưu để ghi vào lịch sử.
                 </div>
 
                 <div className="totals">
@@ -738,9 +821,7 @@ export default function Invoice({ blockId, roomId, roomData }) {
               </div>
 
               <footer className="invoice-footer">
-                <div>
-                  Dữ liệu đang lưu trong hệ thống dãy/phòng (localStorage).
-                </div>
+                <div>Dữ liệu chỉ vào lịch sử sau khi bấm Lưu.</div>
                 <div>
                   Phòng {meta.room || "—"} •{" "}
                   {year && month ? `${year}-${month}` : "—"}

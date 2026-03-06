@@ -17,6 +17,7 @@ export default function HomePage() {
   });
   const [search, setSearch] = useState("");
   const [roomInputs, setRoomInputs] = useState({});
+  const [openAddRoomBlockId, setOpenAddRoomBlockId] = useState(null);
 
   useEffect(() => {
     saveData(data);
@@ -38,6 +39,7 @@ export default function HomePage() {
     }));
 
     setExpandedBlockId(newBlock.id);
+    setOpenAddRoomBlockId(newBlock.id);
     setNewBlockName("");
   };
 
@@ -56,6 +58,10 @@ export default function HomePage() {
       setExpandedBlockId(
         remainingBlocks.length > 0 ? remainingBlocks[0].id : null
       );
+    }
+
+    if (openAddRoomBlockId === blockId) {
+      setOpenAddRoomBlockId(null);
     }
   };
 
@@ -120,6 +126,8 @@ export default function HomePage() {
         defaultTrash: 15000,
       },
     }));
+
+    setOpenAddRoomBlockId(null);
   };
 
   const handleDeleteRoom = (blockId, roomId) => {
@@ -219,6 +227,7 @@ export default function HomePage() {
             filteredBlocks.map((block) => {
               const isOpen = expandedBlockId === block.id;
               const inputs = roomInputs[block.id] || {};
+              const isAddRoomOpen = openAddRoomBlockId === block.id;
 
               return (
                 <div className="block-card card" key={block.id}>
@@ -230,12 +239,12 @@ export default function HomePage() {
                       }
                     >
                       <span>{block.name}</span>
-                      <span className="room-count">
-                        {block.rooms.length} phòng
-                      </span>
                     </button>
 
                     <div className="block-actions">
+                      <span className="room-count">
+                        {block.rooms.length} phòng
+                      </span>
                       <button
                         className="ghost-btn"
                         onClick={() => handleRenameBlock(block.id, block.name)}
@@ -253,97 +262,127 @@ export default function HomePage() {
 
                   {isOpen && (
                     <div className="block-content">
-                      <div className="add-room-form">
-                        <input
-                          type="text"
-                          placeholder="Tên phòng"
-                          value={inputs.roomName || ""}
-                          onChange={(e) =>
-                            handleRoomInputChange(
-                              block.id,
-                              "roomName",
-                              e.target.value
-                            )
-                          }
-                        />
-                        <input
-                          type="text"
-                          placeholder="Tên người thuê"
-                          value={inputs.tenantName || ""}
-                          onChange={(e) =>
-                            handleRoomInputChange(
-                              block.id,
-                              "tenantName",
-                              e.target.value
-                            )
-                          }
-                        />
-                        <input
-                          type="number"
-                          placeholder="Tiền phòng mặc định"
-                          value={inputs.defaultRent || ""}
-                          onChange={(e) =>
-                            handleRoomInputChange(
-                              block.id,
-                              "defaultRent",
-                              e.target.value
-                            )
-                          }
-                        />
-                        <input
-                          type="number"
-                          placeholder="Tiền rác mặc định"
-                          value={inputs.defaultTrash ?? 15000}
-                          onChange={(e) =>
-                            handleRoomInputChange(
-                              block.id,
-                              "defaultTrash",
-                              e.target.value
-                            )
-                          }
-                        />
-                        <button onClick={() => handleAddRoom(block.id)}>
-                          + Thêm phòng
-                        </button>
-                      </div>
-
                       <div className="room-grid">
-                        {block.rooms.length === 0 ? (
+                        {block.rooms.map((room) => (
+                          <div className="room-card" key={room.id}>
+                            <Link
+                              className="room-main"
+                              to={`/invoice/${block.id}/${room.id}`}
+                            >
+                              <h3>{room.roomName}</h3>
+                              <p>{room.tenantName}</p>
+                              <div className="room-meta">
+                                <span>
+                                  Tiền phòng: {formatCurrency(room.defaultRent)}{" "}
+                                  đ
+                                </span>
+                                <span>
+                                  Rác: {formatCurrency(room.defaultTrash)} đ
+                                </span>
+                              </div>
+                            </Link>
+
+                            <div className="room-actions">
+                              <button
+                                className="danger-btn small-btn"
+                                onClick={() =>
+                                  handleDeleteRoom(block.id, room.id)
+                                }
+                              >
+                                Xoá
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+
+                        {!isAddRoomOpen && (
+                          <button
+                            type="button"
+                            className="add-room-tile"
+                            onClick={() => setOpenAddRoomBlockId(block.id)}
+                          >
+                            <span className="add-room-plus">+</span>
+                            <span className="add-room-text">Thêm phòng</span>
+                          </button>
+                        )}
+
+                        {isAddRoomOpen && (
+                          <div className="add-room-card">
+                            <div className="add-room-card-title">
+                              Thêm phòng mới
+                            </div>
+
+                            <input
+                              type="text"
+                              placeholder="Tên phòng"
+                              value={inputs.roomName || ""}
+                              onChange={(e) =>
+                                handleRoomInputChange(
+                                  block.id,
+                                  "roomName",
+                                  e.target.value
+                                )
+                              }
+                            />
+
+                            <input
+                              type="text"
+                              placeholder="Tên người thuê"
+                              value={inputs.tenantName || ""}
+                              onChange={(e) =>
+                                handleRoomInputChange(
+                                  block.id,
+                                  "tenantName",
+                                  e.target.value
+                                )
+                              }
+                            />
+
+                            <input
+                              type="number"
+                              placeholder="Tiền phòng mặc định"
+                              value={inputs.defaultRent || ""}
+                              onChange={(e) =>
+                                handleRoomInputChange(
+                                  block.id,
+                                  "defaultRent",
+                                  e.target.value
+                                )
+                              }
+                            />
+
+                            <input
+                              type="number"
+                              placeholder="Tiền rác mặc định"
+                              value={inputs.defaultTrash ?? 15000}
+                              onChange={(e) =>
+                                handleRoomInputChange(
+                                  block.id,
+                                  "defaultTrash",
+                                  e.target.value
+                                )
+                              }
+                            />
+
+                            <div className="add-room-card-actions">
+                              <button onClick={() => handleAddRoom(block.id)}>
+                                + Thêm phòng
+                              </button>
+                              <button
+                                type="button"
+                                className="ghost-btn"
+                                onClick={() => setOpenAddRoomBlockId(null)}
+                              >
+                                Đóng
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {block.rooms.length === 0 && !isAddRoomOpen && (
                           <div className="empty-room">
                             Chưa có phòng nào trong dãy này.
                           </div>
-                        ) : (
-                          block.rooms.map((room) => (
-                            <div className="room-card" key={room.id}>
-                              <Link
-                                className="room-main"
-                                to={`/invoice/${block.id}/${room.id}`}
-                              >
-                                <h3>{room.roomName}</h3>
-                                <p>{room.tenantName}</p>
-                                <div className="room-meta">
-                                  <span>
-                                    Tiền phòng:{" "}
-                                    {formatCurrency(room.defaultRent)} đ
-                                  </span>
-                                  <span>
-                                    Rác: {formatCurrency(room.defaultTrash)} đ
-                                  </span>
-                                </div>
-                              </Link>
-
-                              <div className="room-actions">
-                                <button
-                                  className="danger-btn small-btn"
-                                  onClick={() =>
-                                    handleDeleteRoom(block.id, room.id)
-                                  }
-                                >
-                                  Xoá
-                                </button>
-                              </div>
-                            </div>
-                          ))
                         )}
                       </div>
                     </div>

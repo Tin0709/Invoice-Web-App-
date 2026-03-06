@@ -72,6 +72,36 @@
   transform: translateY(1px);
 }
 
+/* ===== Tabs (3 màn) ===== */
+.tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 8px 0 12px;
+}
+
+.tabBtn {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--ink);
+  padding: 10px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 13px;
+  box-shadow: 0 6px 16px rgba(17, 24, 39, 0.06);
+}
+
+.tabBtn.active {
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--brand), var(--brand-2));
+  color: #fff;
+}
+
+.tabBtn:active {
+  transform: translateY(1px);
+}
+
 .invoice {
   background: var(--card);
   border: 1px solid var(--line);
@@ -165,6 +195,12 @@
   justify-content: space-between;
   gap: 10px;
   margin-top: 14px;
+}
+
+/* Anti overflow: không cho input đẩy tràn khung */
+.input,
+.cell-input {
+  max-width: 100%;
 }
 
 /* shared inputs */
@@ -303,6 +339,38 @@
   }
 }
 
+/* ===== Mini totals (màn điện & nước) ===== */
+.miniTotals {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+@media (min-width: 620px) {
+  .miniTotals {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+.miniBox {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
+  background: #fff;
+}
+.miniBox .k {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.miniBox .v {
+  margin-top: 6px;
+  font-weight: 900;
+  font-size: 16px;
+  text-align: right;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+}
+
 /* ===== Simple bill table ===== */
 .billTable {
   border: 1px solid var(--line);
@@ -430,8 +498,8 @@
 }
 
 /* =========================
-   ✅ FALLBACK: nếu bạn còn bảng cũ (.table/.t-head/.t-row) thì vẫn không vỡ UI
-========================= */
+     ✅ FALLBACK: nếu bạn còn bảng cũ (.table/.t-head/.t-row) thì vẫn không vỡ UI
+  ========================= */
 .table {
   width: 100%;
   border: 1px solid var(--line);
@@ -489,6 +557,12 @@
     background: #fff !important;
   }
   .topbar {
+    display: none !important;
+  }
+  .tabs {
+    display: none !important;
+  }
+  .tabBtn {
     display: none !important;
   }
   .btn {

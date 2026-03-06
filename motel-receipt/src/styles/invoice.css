@@ -574,8 +574,8 @@
   html,
   body {
     background: #fff !important;
-    margin: 0;
-    padding: 0;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   body {
@@ -592,12 +592,14 @@
   }
 
   .page {
-    max-width: 100%;
-    margin: 0;
-    padding: 0;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .invoice {
+    width: 100% !important;
+    max-width: 100% !important;
     box-shadow: none !important;
     border-radius: 0 !important;
     border: 1px solid #d1d5db !important;
@@ -623,44 +625,121 @@
   .summary,
   .sectionTitle,
   .invoice-header,
-  .invoice-footer {
-    break-inside: avoid;
-    page-break-inside: avoid;
+  .invoice-footer,
+  .meterGrid,
+  .feeRow,
+  .totals .row {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .invoice-header {
+    padding: 14px 16px 12px !important;
+    background: #f3f6ff !important;
+  }
+
+  .title {
+    font-size: 18px !important;
+    margin: 0 0 12px !important;
+    text-align: center !important;
+    font-weight: 850 !important;
+    text-transform: uppercase !important;
+  }
+
+  .metaGrid {
+    display: grid !important;
+    grid-template-columns: 110px minmax(0, 1fr) 110px minmax(0, 1fr) !important;
+    gap: 10px 14px !important;
+    align-items: center !important;
+  }
+
+  .metaGrid > * {
+    min-width: 0 !important;
+  }
+
+  .mLabel {
+    color: #6b7280 !important;
+    font-weight: 650 !important;
+    font-size: 14px !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  .spanRest {
+    grid-column: 2 / -1 !important;
+  }
+
+  .input,
+  .dateInput,
+  .cell-input {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    padding: 8px 12px !important;
+    font-size: 14px !important;
+    line-height: 1.25 !important;
+    border-radius: 12px !important;
+    border: 1px solid #d9deea !important;
+    background: #fff !important;
+    color: #111827 !important;
+    box-sizing: border-box !important;
+  }
+
+  .dateInput {
+    appearance: none !important;
+    -webkit-appearance: none !important;
   }
 
   .table-wrap {
-    padding-bottom: 0 !important;
+    padding: 10px 12px 0 !important;
   }
 
   .sectionTitle {
-    margin-top: 10px;
-    margin-bottom: 6px;
+    margin-top: 10px !important;
+    margin-bottom: 6px !important;
+    font-size: 13px !important;
+  }
+
+  .sectionTitleRow {
+    margin-top: 10px !important;
+    margin-bottom: 6px !important;
   }
 
   .feeRow,
   .totals .row {
-    padding-top: 10px;
-    padding-bottom: 10px;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+  }
+
+  .feeName,
+  .meterTitle {
+    font-size: 13px !important;
+  }
+
+  .mfLabel,
+  .hint,
+  .meterSub {
+    font-size: 11px !important;
   }
 
   .meterFields,
   .meterBottom {
-    gap: 8px;
+    gap: 8px !important;
   }
 
-  .input,
-  .cell-input {
-    padding: 8px 10px;
-    font-size: 13px;
-  }
-
-  .title {
-    font-size: 16px;
-    margin-bottom: 10px;
+  .summary {
+    grid-template-columns: 1.2fr 0.8fr !important;
+    gap: 10px !important;
+    margin-top: 12px !important;
   }
 
   .invoice-footer {
-    font-size: 11px;
+    font-size: 11px !important;
+    padding: 10px 12px 12px !important;
   }
 }
 .btn.success {

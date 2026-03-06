@@ -1,7 +1,9 @@
-// src/components/Invoice.jsx
 import { useMemo, useState } from "react";
 import "../styles/invoice.css";
 
+/* =========================
+   Money helpers
+========================= */
 const parseMoney = (v) => {
   const raw = String(v ?? "").replace(/[^\d]/g, "");
   return raw ? Number(raw) : 0;
@@ -17,20 +19,55 @@ const fmtVND = (n) => {
 
 const clampNonNegative = (n) => (n < 0 ? 0 : n);
 
+/* =========================
+   Date helpers (FIX month/year/date sync)
+========================= */
+const onlyDigits = (v) => String(v ?? "").replace(/[^\d]/g, "");
+
+const toISODate = (y, m, d) => {
+  const yyyy = String(y).padStart(4, "0");
+  const mm = String(m).padStart(2, "0");
+  const dd = String(d).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+const splitISO = (iso) => {
+  const [y, m, d] = String(iso || "").split("-");
+  return { y: y || "", m: m || "", d: d || "" };
+};
+
+const daysInMonth = (year, month) => {
+  const y = Number(year);
+  const m = Number(month);
+  if (!y || !m) return 31;
+  return new Date(y, m, 0).getDate(); // month: 1-12
+};
+
+const formatVNDate = (iso) => {
+  const { y, m, d } = splitISO(iso);
+  if (!y || !m || !d) return "";
+  return `${d}/${m}/${y}`;
+};
+
 export default function Invoice() {
+  // ✅ meta: date là nguồn chính -> month/year derive từ date
   const [meta, setMeta] = useState(() => {
     const now = new Date();
     const yyyy = now.getFullYear();
     const mm = String(now.getMonth() + 1).padStart(2, "0");
     const dd = String(now.getDate()).padStart(2, "0");
     return {
-      month: mm,
-      year: String(yyyy),
       room: "",
-      date: `${yyyy}-${mm}-${dd}`,
       tenant: "",
+      date: `${yyyy}-${mm}-${dd}`, // ISO date
     };
   });
+
+  const {
+    y: year,
+    m: month,
+    d: day,
+  } = useMemo(() => splitISO(meta.date), [meta.date]);
 
   const [f, setF] = useState({
     rentAmount: "",
@@ -48,7 +85,7 @@ export default function Invoice() {
     const rent = parseMoney(f.rentAmount);
 
     const trashUnit = parseMoney(f.trashUnit);
-    const trashAmount = trashUnit;
+    const trashAmount = trashUnit; // rác tính 1 lần / tháng
 
     const elecOld = parseMoney(f.elecOld);
     const elecNew = parseMoney(f.elecNew);
@@ -94,6 +131,36 @@ export default function Invoice() {
 
   const formatOnBlur = (key) => () =>
     setF((s) => ({ ...s, [key]: fmtVND(parseMoney(s[key])) }));
+
+  // ✅ month/year edits -> update meta.date (giữ ngày hợp lệ)
+  const setMonth = (e) => {
+    const raw = onlyDigits(e.target.value).slice(0, 2);
+    if (!raw) return;
+    const mm = String(Math.min(Math.max(parseInt(raw, 10), 1), 12)).padStart(
+      2,
+      "0"
+    );
+
+    const baseYear = year || String(new Date().getFullYear());
+    const maxD = daysInMonth(baseYear, mm);
+    const dd = String(Math.min(Number(day || 1), maxD)).padStart(2, "0");
+
+    setMeta((s) => ({ ...s, date: toISODate(baseYear, mm, dd) }));
+  };
+
+  const setYear = (e) => {
+    const raw = onlyDigits(e.target.value).slice(0, 4);
+    if (!raw) return;
+    const yyyy = raw.padStart(4, "0");
+
+    const baseMonth = month || "01";
+    const maxD = daysInMonth(yyyy, baseMonth);
+    const dd = String(Math.min(Number(day || 1), maxD)).padStart(2, "0");
+
+    setMeta((s) => ({ ...s, date: toISODate(yyyy, baseMonth, dd) }));
+  };
+
+  const setDate = (e) => setMeta((s) => ({ ...s, date: e.target.value }));
 
   const resetNumbers = () => {
     setF((s) => ({
@@ -142,8 +209,8 @@ export default function Invoice() {
               <div className="label">Tháng:</div>
               <input
                 className="input"
-                value={meta.month}
-                onChange={setMetaField("month")}
+                value={month}
+                onChange={setMonth}
                 inputMode="numeric"
                 placeholder="VD: 03"
               />
@@ -153,8 +220,8 @@ export default function Invoice() {
               <div className="label">Năm:</div>
               <input
                 className="input"
-                value={meta.year}
-                onChange={setMetaField("year")}
+                value={year}
+                onChange={setYear}
                 inputMode="numeric"
                 placeholder="VD: 2026"
               />
@@ -172,12 +239,21 @@ export default function Invoice() {
 
             <div className="field">
               <div className="label">Ngày thu:</div>
-              <input
-                className="input"
-                type="date"
-                value={meta.date}
-                onChange={setMetaField("date")}
-              />
+              <div className="dateWrap">
+                {/* hiển thị dd/MM/yyyy đẹp mắt */}
+                <input
+                  className="input"
+                  value={formatVNDate(meta.date)}
+                  readOnly
+                />
+                {/* input date native nằm “ẩn” để vẫn bấm chọn được */}
+                <input
+                  className="dateNative"
+                  type="date"
+                  value={meta.date}
+                  onChange={setDate}
+                />
+              </div>
             </div>
 
             <div className="field span-all">

@@ -75,44 +75,52 @@
   overflow: hidden;
 }
 .invoice-header {
-  padding: 14px 14px 10px;
+  padding: 14px 14px 12px;
   border-bottom: 1px solid var(--line);
   background: linear-gradient(
     0deg,
     rgba(37, 99, 235, 0.06),
     rgba(37, 99, 235, 0.06)
   );
+  overflow: hidden; /* ✅ chống tràn */
 }
 .title {
   text-align: center;
   font-weight: 850;
   letter-spacing: 0.3px;
   font-size: 18px;
-  margin: 2px 0 10px;
+  margin: 2px 0 12px;
   text-transform: uppercase;
 }
 
-.meta {
+/* =========================
+   ✅ FIX: Meta header layout (4 columns desktop)
+========================= */
+.metaGrid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
+  grid-template-columns: 118px minmax(0, 1fr);
+  gap: 10px 12px;
+  align-items: center;
 }
-@media (min-width: 620px) {
-  .meta {
-    grid-template-columns: 1fr 1fr;
+
+@media (min-width: 760px) {
+  .metaGrid {
+    grid-template-columns: 120px minmax(0, 1fr) 120px minmax(0, 1fr);
+    gap: 12px 16px;
   }
 }
-.field {
-  display: grid;
-  grid-template-columns: 118px 1fr;
-  align-items: center;
-  gap: 10px;
-  font-size: 13px;
-}
-.label {
+
+.metaGrid > * {
+  min-width: 0;
+} /* ✅ chống overflow trong grid */
+
+.mLabel {
   color: var(--muted);
   font-weight: 650;
+  white-space: nowrap;
 }
+
+/* input dùng chung */
 .input {
   width: 100%;
   border: 1px solid var(--line);
@@ -121,11 +129,30 @@
   padding: 10px 12px;
   font-size: 14px;
   outline: none;
-}
-.span-all {
-  grid-column: 1 / -1;
+  min-width: 0; /* ✅ chống tràn */
 }
 
+/* tenant input span hết phần còn lại */
+.spanRest {
+  grid-column: 2 / -1; /* mobile: cột 2; desktop: cột 2->4 */
+}
+
+/* Date overlay */
+.dateWrap {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+.dateNative {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* =========================
+   Table
+========================= */
 .table-wrap {
   padding: 10px 14px 14px;
 }
@@ -176,6 +203,7 @@
   font-size: 14px;
   background: #fff;
   outline: none;
+  min-width: 0;
 }
 .cell-input[readonly],
 .cell-input[disabled] {
@@ -201,6 +229,9 @@
   }
 }
 
+/* =========================
+   Summary
+========================= */
 .summary {
   display: grid;
   grid-template-columns: 1fr;
@@ -283,6 +314,7 @@
   font-size: 12px;
 }
 
+/* Print */
 @media print {
   body {
     background: #fff !important;

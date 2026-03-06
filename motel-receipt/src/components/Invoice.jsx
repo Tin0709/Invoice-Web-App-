@@ -46,12 +46,6 @@ const daysInMonth = (year, month) => {
   return new Date(y, m, 0).getDate();
 };
 
-const formatVNDate = (iso) => {
-  const { y, m, d } = splitISO(iso);
-  if (!y || !m || !d) return "";
-  return `${d}/${m}/${y}`;
-};
-
 const getPrevPeriod = (year, month) => {
   const y = Number(year);
   const m = Number(month);
@@ -116,7 +110,7 @@ function MetersBlock({
                 value={f.elecOld}
                 onChange={setDigitsField("elecOld")}
                 inputMode="numeric"
-                placeholder="tự lấy tháng trước"
+                placeholder="Số tháng trước"
               />
             </div>
 
@@ -176,7 +170,7 @@ function MetersBlock({
                 value={f.waterOld}
                 onChange={setDigitsField("waterOld")}
                 inputMode="numeric"
-                placeholder="tự lấy tháng trước"
+                placeholder="Số tháng trước"
               />
             </div>
 
@@ -665,19 +659,12 @@ export default function Invoice() {
             />
 
             <div className="mLabel">Ngày thu:</div>
-            <div className="dateWrap">
-              <input
-                className="input"
-                value={formatVNDate(meta.date)}
-                readOnly
-              />
-              <input
-                className="dateNative"
-                type="date"
-                value={meta.date}
-                onChange={setDate}
-              />
-            </div>
+            <input
+              className="input dateInput"
+              type="date"
+              value={meta.date}
+              onChange={setDate}
+            />
 
             <div className="mLabel">Tên người thuê:</div>
             <input

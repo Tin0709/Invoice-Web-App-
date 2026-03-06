@@ -165,18 +165,31 @@
 }
 
 /* Date overlay */
-.dateWrap {
-  position: relative;
+
+.dateWrap .input {
+  pointer-events: none;
+}
+.dateInput {
   width: 100%;
   min-width: 0;
-}
-.dateNative {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
 }
 
+.dateInput::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 1;
+}
+
+.dateInput::-webkit-datetime-edit,
+.dateInput::-webkit-datetime-edit-fields-wrapper,
+.dateInput::-webkit-datetime-edit-text,
+.dateInput::-webkit-datetime-edit-month-field,
+.dateInput::-webkit-datetime-edit-day-field,
+.dateInput::-webkit-datetime-edit-year-field {
+  color: var(--ink, #111827);
+}
 /* ===== Body wrapper ===== */
 .table-wrap {
   padding: 12px 14px 14px;

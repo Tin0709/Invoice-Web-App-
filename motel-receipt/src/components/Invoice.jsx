@@ -21,6 +21,12 @@ const clampNonNegative = (n) => (n < 0 ? 0 : n);
 const onlyDigits = (v) => String(v ?? "").replace(/[^\d]/g, "");
 const digits = (v) => String(v ?? "").replace(/[^\d]/g, "");
 
+const formatMoneyInput = (value) => {
+  const raw = onlyDigits(value);
+  if (!raw) return "";
+  return fmtVND(Number(raw));
+};
+
 const toISODate = (y, m, d) => {
   const yyyy = String(y).padStart(4, "0");
   const mm = String(m).padStart(2, "0");
@@ -84,8 +90,7 @@ function MetersBlock({
   f,
   calc,
   setDigitsField,
-  setField,
-  formatOnBlur,
+  setMoneyField,
   applyPrevOld,
 }) {
   return (
@@ -100,10 +105,7 @@ function MetersBlock({
       <div className="meterGrid">
         <div className="meterCard">
           <div className="meterHead">
-            <div className="meterTitle">Điện</div>
-            <div className="meterSub">
-              Đơn giá mặc định: <b>3.200</b> / kWh
-            </div>
+            <div className="meterTitle">Điện (kWh)</div>
           </div>
 
           <div className="meterFields">
@@ -145,8 +147,7 @@ function MetersBlock({
               <input
                 className="cell-input money"
                 value={f.elecUnit}
-                onChange={setField("elecUnit")}
-                onBlur={formatOnBlur("elecUnit")}
+                onChange={setMoneyField("elecUnit")}
                 inputMode="numeric"
               />
             </div>
@@ -164,10 +165,7 @@ function MetersBlock({
 
         <div className="meterCard">
           <div className="meterHead">
-            <div className="meterTitle">Nước</div>
-            <div className="meterSub">
-              Đơn giá mặc định: <b>12.000</b> / m³
-            </div>
+            <div className="meterTitle">Nước (m³)</div>
           </div>
 
           <div className="meterFields">
@@ -209,8 +207,7 @@ function MetersBlock({
               <input
                 className="cell-input money"
                 value={f.waterUnit}
-                onChange={setField("waterUnit")}
-                onBlur={formatOnBlur("waterUnit")}
+                onChange={setMoneyField("waterUnit")}
                 inputMode="numeric"
               />
             </div>
@@ -249,26 +246,20 @@ function MetersBlock({
   );
 }
 
-function TrashBlock({ f, calc, setField, formatOnBlur }) {
+function TrashBlock({ f, setMoneyField }) {
   return (
     <>
       <div className="sectionTitle">Tiền rác</div>
       <div className="feesGrid">
         <div className="feeRow">
-          <div className="feeName">Tiền rác (mặc định 15.000, sửa được)</div>
-          <div className="feeRight feeSplit">
+          <div className="feeName">Tiền rác</div>
+          <div className="feeRight">
             <input
               className="cell-input money"
               value={f.trashUnit}
-              onChange={setField("trashUnit")}
-              onBlur={formatOnBlur("trashUnit")}
+              onChange={setMoneyField("trashUnit")}
               inputMode="numeric"
-            />
-            <div className="feeEquals">=</div>
-            <input
-              className="cell-input money"
-              value={fmtVND(calc.trashAmount)}
-              readOnly
+              placeholder="15.000"
             />
           </div>
         </div>
@@ -277,7 +268,7 @@ function TrashBlock({ f, calc, setField, formatOnBlur }) {
   );
 }
 
-function FixedFeesBlock({ f, calc, setField, formatOnBlur }) {
+function FixedFeesBlock({ f, setMoneyField }) {
   return (
     <>
       <div className="sectionTitle">Khoản cố định</div>
@@ -288,8 +279,7 @@ function FixedFeesBlock({ f, calc, setField, formatOnBlur }) {
             <input
               className="cell-input money"
               value={f.rentAmount}
-              onChange={setField("rentAmount")}
-              onBlur={formatOnBlur("rentAmount")}
+              onChange={setMoneyField("rentAmount")}
               inputMode="numeric"
               placeholder="0"
             />
@@ -298,19 +288,13 @@ function FixedFeesBlock({ f, calc, setField, formatOnBlur }) {
 
         <div className="feeRow">
           <div className="feeName">Tiền rác</div>
-          <div className="feeRight feeSplit">
+          <div className="feeRight">
             <input
               className="cell-input money"
               value={f.trashUnit}
-              onChange={setField("trashUnit")}
-              onBlur={formatOnBlur("trashUnit")}
+              onChange={setMoneyField("trashUnit")}
               inputMode="numeric"
-            />
-            <div className="feeEquals">=</div>
-            <input
-              className="cell-input money"
-              value={fmtVND(calc.trashAmount)}
-              readOnly
+              placeholder="15.000"
             />
           </div>
         </div>
@@ -351,13 +335,13 @@ export default function Invoice() {
 
   const [f, setF] = useState({
     rentAmount: "",
-    trashUnit: "15000",
+    trashUnit: "15.000",
     elecOld: "",
     elecNew: "",
-    elecUnit: "3200",
+    elecUnit: "3.200",
     waterOld: "",
     waterNew: "",
-    waterUnit: "12000",
+    waterUnit: "12.000",
     paid: "",
   });
 
@@ -407,14 +391,11 @@ export default function Invoice() {
 
   const setDate = (e) => setMeta((s) => ({ ...s, date: e.target.value }));
 
-  const setField = (key) => (e) =>
-    setF((s) => ({ ...s, [key]: e.target.value }));
-
   const setDigitsField = (key) => (e) =>
     setF((s) => ({ ...s, [key]: onlyDigits(e.target.value) }));
 
-  const formatOnBlur = (key) => () =>
-    setF((s) => ({ ...s, [key]: fmtVND(parseMoney(s[key])) }));
+  const setMoneyField = (key) => (e) =>
+    setF((s) => ({ ...s, [key]: formatMoneyInput(e.target.value) }));
 
   const commitMonth = () => {
     const raw = onlyDigits(monthText).slice(0, 2);
@@ -476,13 +457,13 @@ export default function Invoice() {
         if (saved) {
           return {
             rentAmount: saved.rentAmount ?? "",
-            trashUnit: saved.trashUnit ?? "15000",
+            trashUnit: saved.trashUnit ?? "15.000",
             elecOld: digits(saved.elecOld),
             elecNew: digits(saved.elecNew),
-            elecUnit: saved.elecUnit ?? "3200",
+            elecUnit: saved.elecUnit ?? "3.200",
             waterOld: digits(saved.waterOld),
             waterNew: digits(saved.waterNew),
-            waterUnit: saved.waterUnit ?? "12000",
+            waterUnit: saved.waterUnit ?? "12.000",
             paid: saved.paid ?? "",
           };
         }
@@ -492,13 +473,13 @@ export default function Invoice() {
 
         return {
           rentAmount: prev?.rentAmount ?? "",
-          trashUnit: prev?.trashUnit ?? "15000",
+          trashUnit: prev?.trashUnit ?? "15.000",
           elecOld: prevElecNew ? digits(prevElecNew) : "",
           elecNew: "",
-          elecUnit: prev?.elecUnit ?? "3200",
+          elecUnit: prev?.elecUnit ?? "3.200",
           waterOld: prevWaterNew ? digits(prevWaterNew) : "",
           waterNew: "",
-          waterUnit: prev?.waterUnit ?? "12000",
+          waterUnit: prev?.waterUnit ?? "12.000",
           paid: "",
         };
       });
@@ -558,9 +539,9 @@ export default function Invoice() {
       waterOld: "",
       waterNew: "",
       paid: "",
-      trashUnit: "15000",
-      elecUnit: "3200",
-      waterUnit: "12000",
+      trashUnit: "15.000",
+      elecUnit: "3.200",
+      waterUnit: "12.000",
     }));
   };
 
@@ -715,36 +696,24 @@ export default function Invoice() {
               f={f}
               calc={calc}
               setDigitsField={setDigitsField}
-              setField={setField}
-              formatOnBlur={formatOnBlur}
+              setMoneyField={setMoneyField}
               applyPrevOld={applyPrevOld}
             />
           )}
 
           {view === "trash" && (
-            <TrashBlock
-              f={f}
-              calc={calc}
-              setField={setField}
-              formatOnBlur={formatOnBlur}
-            />
+            <TrashBlock f={f} setMoneyField={setMoneyField} />
           )}
 
           {view === "invoice" && (
             <>
-              <FixedFeesBlock
-                f={f}
-                calc={calc}
-                setField={setField}
-                formatOnBlur={formatOnBlur}
-              />
+              <FixedFeesBlock f={f} setMoneyField={setMoneyField} />
 
               <MetersBlock
                 f={f}
                 calc={calc}
                 setDigitsField={setDigitsField}
-                setField={setField}
-                formatOnBlur={formatOnBlur}
+                setMoneyField={setMoneyField}
                 applyPrevOld={applyPrevOld}
               />
 
@@ -771,8 +740,7 @@ export default function Invoice() {
                       <input
                         className="cell-input money"
                         value={f.paid}
-                        onChange={setField("paid")}
-                        onBlur={formatOnBlur("paid")}
+                        onChange={setMoneyField("paid")}
                         inputMode="numeric"
                         placeholder="0"
                       />

@@ -552,27 +552,101 @@
 }
 
 /* Print */
+@page {
+  size: A4 portrait;
+  margin: 10mm;
+}
+
 @media print {
+  html,
   body {
     background: #fff !important;
+    margin: 0;
+    padding: 0;
   }
-  .topbar {
-    display: none !important;
+
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
-  .tabs {
-    display: none !important;
-  }
-  .tabBtn {
-    display: none !important;
-  }
-  .btn {
-    display: none !important;
-  }
-  .invoice {
-    box-shadow: none;
-    border-radius: 0;
-  }
+
+  .topbar,
+  .tabs,
+  .tabBtn,
+  .btn,
   .note {
     display: none !important;
+  }
+
+  .page {
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  .invoice {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    border: 1px solid #d1d5db !important;
+    overflow: visible !important;
+  }
+
+  .invoice-header,
+  .table-wrap,
+  .invoice-footer,
+  .feesGrid,
+  .meterCard,
+  .totals,
+  .summary,
+  .meterGrid,
+  .feeRow,
+  .row {
+    overflow: visible !important;
+  }
+
+  .feesGrid,
+  .meterCard,
+  .totals,
+  .summary,
+  .sectionTitle,
+  .invoice-header,
+  .invoice-footer {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .table-wrap {
+    padding-bottom: 0 !important;
+  }
+
+  .sectionTitle {
+    margin-top: 10px;
+    margin-bottom: 6px;
+  }
+
+  .feeRow,
+  .totals .row {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+
+  .meterFields,
+  .meterBottom {
+    gap: 8px;
+  }
+
+  .input,
+  .cell-input {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  .title {
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+
+  .invoice-footer {
+    font-size: 11px;
   }
 }

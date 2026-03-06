@@ -12,10 +12,12 @@ export default function InvoicePage() {
 
   if (!block || !room) {
     return (
-      <div style={{ padding: "24px" }}>
-        <Link to="/" style={{ display: "inline-block", marginBottom: "16px" }}>
-          ← Quay về trang chủ
-        </Link>
+      <div className="page">
+        <div style={{ marginBottom: "16px" }}>
+          <Link to="/" style={{ textDecoration: "none", fontWeight: 700 }}>
+            ← Quay về trang chủ
+          </Link>
+        </div>
         <h2>Không tìm thấy phòng</h2>
       </div>
     );
@@ -24,10 +26,10 @@ export default function InvoicePage() {
   return (
     <div className="page">
       <div style={{ marginBottom: "16px" }}>
-        <Link to="/" style={{ textDecoration: "none" }}>
+        <Link to="/" style={{ textDecoration: "none", fontWeight: 700 }}>
           ← Quay về trang chủ
         </Link>
-        <div style={{ marginTop: "8px", color: "#6b7280" }}>
+        <div style={{ marginTop: "8px", color: "#6b7280", fontSize: "15px" }}>
           {block.name} - {room.roomName} - {room.tenantName}
         </div>
       </div>

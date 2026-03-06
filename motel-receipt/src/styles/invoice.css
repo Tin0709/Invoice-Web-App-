@@ -63,6 +63,11 @@
   background: linear-gradient(135deg, var(--brand), var(--brand-2));
   color: #fff;
 }
+.btn.tiny {
+  padding: 8px 10px;
+  font-size: 12px;
+  border-radius: 10px;
+}
 .btn:active {
   transform: translateY(1px);
 }
@@ -82,7 +87,7 @@
     rgba(37, 99, 235, 0.06),
     rgba(37, 99, 235, 0.06)
   );
-  overflow: hidden; /* ✅ chống tràn */
+  overflow: hidden;
 }
 .title {
   text-align: center;
@@ -93,34 +98,28 @@
   text-transform: uppercase;
 }
 
-/* =========================
-   ✅ FIX: Meta header layout (4 columns desktop)
-========================= */
+/* ===== Meta grid ===== */
 .metaGrid {
   display: grid;
   grid-template-columns: 118px minmax(0, 1fr);
   gap: 10px 12px;
   align-items: center;
 }
-
 @media (min-width: 760px) {
   .metaGrid {
     grid-template-columns: 120px minmax(0, 1fr) 120px minmax(0, 1fr);
     gap: 12px 16px;
   }
 }
-
 .metaGrid > * {
   min-width: 0;
-} /* ✅ chống overflow trong grid */
-
+}
 .mLabel {
   color: var(--muted);
   font-weight: 650;
   white-space: nowrap;
 }
 
-/* input dùng chung */
 .input {
   width: 100%;
   border: 1px solid var(--line);
@@ -129,12 +128,10 @@
   padding: 10px 12px;
   font-size: 14px;
   outline: none;
-  min-width: 0; /* ✅ chống tràn */
+  min-width: 0;
 }
-
-/* tenant input span hết phần còn lại */
 .spanRest {
-  grid-column: 2 / -1; /* mobile: cột 2; desktop: cột 2->4 */
+  grid-column: 2 / -1;
 }
 
 /* Date overlay */
@@ -150,56 +147,32 @@
   cursor: pointer;
 }
 
-/* =========================
-   Table
-========================= */
+/* ===== Body wrapper ===== */
 .table-wrap {
-  padding: 10px 14px 14px;
-}
-.table {
-  width: 100%;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  overflow: hidden;
+  padding: 12px 14px 14px;
 }
 
-.t-head,
-.t-row {
-  display: grid;
-  grid-template-columns: 1.3fr 0.75fr 0.75fr 0.75fr 0.95fr 1fr;
-  align-items: stretch;
-}
-.t-head {
-  background: #eef2ff;
-  font-weight: 800;
+.sectionTitle {
+  font-weight: 850;
   font-size: 13px;
-  border-bottom: 1px solid var(--line);
+  letter-spacing: 0.2px;
+  color: #111827;
+  margin: 12px 0 8px;
 }
-.t-head > div,
-.t-row > div {
-  padding: 10px 10px;
-  border-right: 1px solid var(--line);
+.sectionTitleRow {
   display: flex;
   align-items: center;
-}
-.t-head > div:last-child,
-.t-row > div:last-child {
-  border-right: 0;
-}
-
-.t-row {
-  background: #fff;
-  border-bottom: 1px solid var(--line);
-}
-.t-row:last-child {
-  border-bottom: 0;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 14px;
 }
 
+/* shared inputs */
 .cell-input {
   width: 100%;
   border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 9px 10px;
+  border-radius: 12px;
+  padding: 10px 12px;
   font-size: 14px;
   background: #fff;
   outline: none;
@@ -215,28 +188,172 @@
     "Liberation Mono", "Courier New", monospace;
   text-align: right;
 }
-.right {
-  justify-content: flex-end;
-}
 
+/* ===== Fixed fees ===== */
+.feesGrid {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+}
+.feeRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.feeRow:last-child {
+  border-bottom: 0;
+}
+.feeName {
+  font-weight: 750;
+  color: #111827;
+}
+.hint {
+  font-weight: 650;
+  color: var(--muted);
+  font-size: 12px;
+  margin-left: 6px;
+}
+.feeRight {
+  width: 260px;
+  max-width: 50%;
+}
 @media (max-width: 620px) {
-  .table {
-    overflow: auto;
+  .feeRow {
+    flex-direction: column;
+    align-items: stretch;
   }
-  .t-head,
-  .t-row {
-    min-width: 760px;
+  .feeRight {
+    width: 100%;
+    max-width: 100%;
+  }
+}
+.feeSplit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.feeEquals {
+  color: var(--muted);
+  font-weight: 800;
+  padding: 0 2px;
+}
+
+/* ===== Meters ===== */
+.meterGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 760px) {
+  .meterGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.meterCard {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  overflow: hidden;
+}
+.meterHead {
+  padding: 12px 12px 10px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(37, 99, 235, 0.05);
+}
+.meterTitle {
+  font-weight: 900;
+  font-size: 14px;
+}
+.meterSub {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.meterFields {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  padding: 12px;
+}
+@media (max-width: 620px) {
+  .meterFields {
+    grid-template-columns: 1fr;
+  }
+}
+.mfLabel {
+  color: var(--muted);
+  font-weight: 650;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+.meterBottom {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 0 12px 12px;
+}
+@media (max-width: 620px) {
+  .meterBottom {
+    grid-template-columns: 1fr;
   }
 }
 
-/* =========================
-   Summary
-========================= */
+/* ===== Simple bill table ===== */
+.billTable {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+}
+.billHead,
+.billRow {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 0.9fr 1.1fr;
+  align-items: center;
+}
+.billHead {
+  background: #eef2ff;
+  font-weight: 850;
+  font-size: 13px;
+  border-bottom: 1px solid var(--line);
+}
+.billHead > div,
+.billRow > div {
+  padding: 10px 12px;
+  border-right: 1px solid var(--line);
+}
+.billHead > div:last-child,
+.billRow > div:last-child {
+  border-right: 0;
+}
+.billRow {
+  border-bottom: 1px solid var(--line);
+}
+.billRow:last-child {
+  border-bottom: 0;
+}
+
+/* global right align (text) */
+.right {
+  text-align: right;
+}
+
+.moneyText {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+}
+
+/* ===== Summary ===== */
 .summary {
   display: grid;
   grid-template-columns: 1fr;
   gap: 10px;
-  margin-top: 12px;
+  margin-top: 14px;
 }
 @media (min-width: 620px) {
   .summary {
@@ -244,7 +361,6 @@
     align-items: start;
   }
 }
-
 .note {
   border: 1px dashed var(--line);
   border-radius: 14px;
@@ -254,7 +370,6 @@
   font-size: 13px;
   line-height: 1.45;
 }
-
 .totals {
   border: 1px solid var(--line);
   border-radius: 14px;
@@ -314,6 +429,60 @@
   font-size: 12px;
 }
 
+/* =========================
+   ✅ FALLBACK: nếu bạn còn bảng cũ (.table/.t-head/.t-row) thì vẫn không vỡ UI
+========================= */
+.table {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+}
+.t-head,
+.t-row {
+  display: grid;
+  grid-template-columns: 1.3fr 0.75fr 0.75fr 0.75fr 0.95fr 1fr;
+  align-items: stretch;
+}
+.t-head {
+  background: #eef2ff;
+  font-weight: 800;
+  font-size: 13px;
+  border-bottom: 1px solid var(--line);
+}
+.t-head > div,
+.t-row > div {
+  padding: 10px 10px;
+  border-right: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+}
+.t-head > div:last-child,
+.t-row > div:last-child {
+  border-right: 0;
+}
+.t-row {
+  border-bottom: 1px solid var(--line);
+}
+.t-row:last-child {
+  border-bottom: 0;
+}
+/* scope right as flex-end inside old grid cells */
+.t-head .right,
+.t-row .right {
+  justify-content: flex-end;
+}
+@media (max-width: 620px) {
+  .table {
+    overflow: auto;
+  }
+  .t-head,
+  .t-row {
+    min-width: 760px;
+  }
+}
+
 /* Print */
 @media print {
   body {
@@ -322,11 +491,14 @@
   .topbar {
     display: none !important;
   }
-  .note {
+  .btn {
     display: none !important;
   }
   .invoice {
     box-shadow: none;
     border-radius: 0;
+  }
+  .note {
+    display: none !important;
   }
 }

@@ -17,6 +17,18 @@
   --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
 }
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
   font-family: var(--font);

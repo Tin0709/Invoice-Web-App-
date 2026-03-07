@@ -70,7 +70,7 @@ export default function HistoryPage() {
   const handleDeleteOne = (item) => {
     openConfirm({
       title: "Xoá lịch sử",
-      message: `Bạn có chắc muốn xoá lịch sử ${item.roomName} - ${item.month}/${item.year} không?`,
+      message: `Bạn có muốn xoá lịch sử ${item.roomName} - ${item.month}/${item.year} không?`,
       onConfirm: () => {
         const next = deleteInvoice(
           item.blockId,

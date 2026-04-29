@@ -83,35 +83,13 @@
     var(--brand, #2563eb),
     var(--brand-2, #06b6d4)
   );
-  color: #fff;
-}
-
-.btn.success {
-  border-color: transparent;
-  background: #16a34a;
-  color: #fff;
-}
-
-.btn.success:hover {
-  filter: brightness(0.96);
+  color: #ffffff;
 }
 
 .btn.tiny {
   padding: 8px 10px;
   font-size: 12px;
   border-radius: 10px;
-}
-
-.save-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 10px 14px;
-  border-radius: 12px;
-  background: #dcfce7;
-  color: #166534;
-  font-size: 14px;
-  font-weight: 700;
 }
 
 /* =========================
@@ -171,13 +149,13 @@
 .input {
   width: 100%;
   max-width: 100%;
+  min-width: 0;
   border: 1px solid var(--line, #e5e7eb);
   background: #ffffff;
   border-radius: 12px;
   padding: 10px 12px;
   font-size: 14px;
   outline: none;
-  min-width: 0;
 }
 
 .spanRest {
@@ -231,19 +209,19 @@
 }
 
 /* =========================
-   INPUTS
+   FORM INPUTS
 ========================= */
 
 .cell-input {
   width: 100%;
   max-width: 100%;
+  min-width: 0;
   border: 1px solid var(--line, #e5e7eb);
   border-radius: 12px;
   padding: 10px 12px;
   font-size: 14px;
   background: #ffffff;
   outline: none;
-  min-width: 0;
 }
 
 .cell-input[readonly],
@@ -293,7 +271,7 @@
 }
 
 /* =========================
-   METERS
+   ELECTRICITY & WATER
 ========================= */
 
 .meterGrid {
@@ -328,13 +306,6 @@
   padding: 12px;
 }
 
-.mfLabel {
-  color: var(--muted, #6b7280);
-  font-weight: 700;
-  font-size: 12px;
-  margin-bottom: 6px;
-}
-
 .meterBottom {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -342,37 +313,11 @@
   padding: 0 12px 12px;
 }
 
-/* =========================
-   MINI TOTALS
-========================= */
-
-.miniTotals {
-  margin-top: 12px;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
-}
-
-.miniBox {
-  border: 1px solid var(--line, #e5e7eb);
-  border-radius: 14px;
-  padding: 12px;
-  background: #ffffff;
-}
-
-.miniBox .k {
+.mfLabel {
   color: var(--muted, #6b7280);
-  font-size: 12px;
   font-weight: 700;
-}
-
-.miniBox .v {
-  margin-top: 6px;
-  font-weight: 900;
-  font-size: 16px;
-  text-align: right;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-    "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  margin-bottom: 6px;
 }
 
 /* =========================
@@ -406,11 +351,11 @@
 .totals .row {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 12px;
   padding: 12px;
   border-bottom: 1px solid var(--line, #e5e7eb);
   background: #ffffff;
-  align-items: center;
 }
 
 .totals .row:last-child {
@@ -432,9 +377,9 @@
 }
 
 .totals .v {
-  font-weight: 850;
-  text-align: right;
   min-width: 110px;
+  text-align: right;
+  font-weight: 850;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
     "Liberation Mono", "Courier New", monospace;
 }
@@ -453,6 +398,10 @@
   color: var(--ok, #16a34a);
 }
 
+/* =========================
+   FOOTER + BOTTOM SAVE
+========================= */
+
 .invoice-footer {
   padding: 12px 14px 14px;
   border-top: 1px solid var(--line, #e5e7eb);
@@ -462,6 +411,83 @@
   flex-wrap: wrap;
   color: var(--muted, #6b7280);
   font-size: 12px;
+}
+
+.bottom-save-area {
+  padding: 18px 14px 20px;
+  border-top: 1px solid var(--line, #e5e7eb);
+  background: #ffffff;
+}
+
+.save-main-btn {
+  width: 100%;
+  border: none;
+  border-radius: 16px;
+  padding: 16px 18px;
+  background: #16a34a;
+  color: #ffffff;
+  font-size: 17px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 12px 26px rgba(22, 163, 74, 0.22);
+}
+
+.save-main-btn:active {
+  transform: translateY(1px);
+}
+
+.save-hint {
+  margin: 10px 0 0;
+  text-align: center;
+  color: var(--muted, #6b7280);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* =========================
+   SAVE TOAST
+========================= */
+
+.save-toast {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  z-index: 9999;
+  width: min(520px, calc(100% - 28px));
+  padding: 14px 18px;
+  border-radius: 16px;
+  background: #dcfce7;
+  color: #166534;
+  font-size: 16px;
+  font-weight: 900;
+  text-align: center;
+  box-shadow: 0 16px 35px rgba(22, 101, 52, 0.18);
+  animation: saveToastDrop 0.28s ease-out,
+    saveToastOut 0.25s ease-in 1.5s forwards;
+}
+
+@keyframes saveToastDrop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@keyframes saveToastOut {
+  from {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translate(-50%, -18px);
+  }
 }
 
 /* =========================
@@ -559,10 +585,6 @@
     grid-template-columns: 1.2fr 0.8fr;
     align-items: start;
   }
-
-  .miniTotals {
-    grid-template-columns: 1fr 1fr 1fr;
-  }
 }
 
 /* =========================
@@ -584,12 +606,13 @@
     grid-template-columns: 1fr 1fr;
   }
 
-  .actions .btn.primary {
-    grid-column: 1 / -1;
-  }
-
   .btn {
     width: 100%;
+  }
+
+  .input,
+  .cell-input {
+    font-size: 16px;
   }
 
   .feeRow {
@@ -610,8 +633,21 @@
     grid-template-columns: 1fr;
   }
 
-  .totals .row {
-    align-items: center;
+  .bottom-save-area {
+    padding: 16px 12px 22px;
+  }
+
+  .save-main-btn {
+    font-size: 16px;
+    padding: 16px;
+    border-radius: 14px;
+  }
+
+  .save-toast {
+    top: 12px;
+    font-size: 15px;
+    padding: 13px 14px;
+    border-radius: 14px;
   }
 
   .confirm-actions {
@@ -638,10 +674,10 @@
   #root {
     margin: 0 !important;
     padding: 0 !important;
-    background: #ffffff !important;
     width: 100% !important;
     min-height: auto !important;
     overflow: visible !important;
+    background: #ffffff !important;
   }
 
   body {
@@ -657,14 +693,14 @@
   .invoice-page-top,
   .topbar,
   .actions,
-  .save-badge,
-  .confirm-overlay {
+  .confirm-overlay,
+  .save-toast {
     display: none !important;
   }
 
   .page {
-    max-width: 190mm !important;
     width: 190mm !important;
+    max-width: 190mm !important;
     margin: 0 auto !important;
     padding: 0 !important;
   }
@@ -801,7 +837,8 @@
     font-size: 11px !important;
   }
 
-  .invoice-footer {
+  .invoice-footer,
+  .bottom-save-area {
     display: none !important;
   }
 

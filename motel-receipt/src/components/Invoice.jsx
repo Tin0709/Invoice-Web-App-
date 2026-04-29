@@ -571,14 +571,14 @@ export default function Invoice({
 
   return (
     <>
+      {saveMessage && (
+        <div className="save-toast no-print" role="status">
+          ✅ Đã lưu phiếu thành công.
+        </div>
+      )}
+
       <div className="topbar no-print">
         <div className="actions actions-only">
-          {saveMessage && <div className="save-badge">{saveMessage}</div>}
-
-          <button className="btn success" type="button" onClick={handleSave}>
-            💾 Lưu
-          </button>
-
           <button className="btn" type="button" onClick={resetNumbers}>
             ↺ Reset
           </button>
@@ -723,6 +723,20 @@ export default function Invoice({
               {year && month ? `${year}-${month}` : "—"}
             </div>
           </footer>
+
+          <div className="bottom-save-area no-print">
+            <button
+              className="save-main-btn"
+              type="button"
+              onClick={handleSave}
+            >
+              💾 Lưu phiếu thu
+            </button>
+
+            <p className="save-hint">
+              Dữ liệu chỉ được ghi vào lịch sử sau khi bấm nút Lưu.
+            </p>
+          </div>
         </div>
       </section>
     </>

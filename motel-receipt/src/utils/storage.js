@@ -1,29 +1,44 @@
 const STORAGE_KEY = "motel_receipt_data_v1";
 
-const defaultData = {
-  blocks: [
-    {
-      id: crypto.randomUUID(),
-      name: "Dãy A",
-      rooms: [
-        {
-          id: crypto.randomUUID(),
-          roomName: "Phòng 1",
-          tenantName: "Người thuê mẫu",
-          defaultRent: 2500000,
-          defaultTrash: 15000,
-          invoices: [],
-        },
-      ],
-    },
-  ],
-};
+export function createId() {
+  if (
+    typeof globalThis !== "undefined" &&
+    globalThis.crypto &&
+    typeof globalThis.crypto.randomUUID === "function"
+  ) {
+    return globalThis.crypto.randomUUID();
+  }
+
+  return `id-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function createDefaultData() {
+  return {
+    blocks: [
+      {
+        id: createId(),
+        name: "Dãy A",
+        rooms: [
+          {
+            id: createId(),
+            roomName: "Phòng 1",
+            tenantName: "Người thuê mẫu",
+            defaultRent: 2500000,
+            defaultTrash: 15000,
+            invoices: [],
+          },
+        ],
+      },
+    ],
+  };
+}
 
 export function loadData() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
 
     if (!raw) {
+      const defaultData = createDefaultData();
       localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultData));
       return defaultData;
     }
@@ -31,6 +46,7 @@ export function loadData() {
     const parsed = JSON.parse(raw);
 
     if (!parsed || !Array.isArray(parsed.blocks)) {
+      const defaultData = createDefaultData();
       localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultData));
       return defaultData;
     }
@@ -38,7 +54,7 @@ export function loadData() {
     return parsed;
   } catch (error) {
     console.error("loadData error:", error);
-    return defaultData;
+    return createDefaultData();
   }
 }
 

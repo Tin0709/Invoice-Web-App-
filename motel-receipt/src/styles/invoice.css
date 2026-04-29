@@ -571,175 +571,229 @@
 }
 
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 5mm;
+  }
+
   html,
-  body {
-    background: #fff !important;
+  body,
+  #root {
     margin: 0 !important;
     padding: 0 !important;
+    background: #ffffff !important;
+    width: 100% !important;
+    min-height: auto !important;
+    overflow: visible !important;
   }
 
   body {
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
-  .topbar,
-  .tabs,
-  .tabBtn,
-  .btn,
-  .note {
+  * {
+    box-shadow: none !important;
+  }
+
+  /* Ẩn các phần không cần in */
+  .no-print,
+  .back-link,
+  .invoice-back,
+  .invoice-actions,
+  .invoice-toolbar,
+  .print-actions,
+  .save-actions {
     display: none !important;
   }
 
-  .page {
-    max-width: 100% !important;
+  /* Khung trang in */
+  .invoice-page {
+    background: #ffffff !important;
+    padding: 0 !important;
     margin: 0 !important;
+    min-height: auto !important;
+  }
+
+  .invoice-shell {
+    width: 190mm !important;
+    max-width: 190mm !important;
+    margin: 0 auto !important;
     padding: 0 !important;
   }
 
-  .invoice {
+  /* Khung phiếu */
+  .invoice-card,
+  .receipt-card,
+  .invoice-box,
+  .receipt-box {
     width: 100% !important;
     max-width: 100% !important;
-    box-shadow: none !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    border: 1px solid #d7dce8 !important;
     border-radius: 0 !important;
-    border: 1px solid #d1d5db !important;
-    overflow: visible !important;
-  }
-
-  .invoice-header,
-  .table-wrap,
-  .invoice-footer,
-  .feesGrid,
-  .meterCard,
-  .totals,
-  .summary,
-  .meterGrid,
-  .feeRow,
-  .row {
-    overflow: visible !important;
-  }
-
-  .feesGrid,
-  .meterCard,
-  .totals,
-  .summary,
-  .sectionTitle,
-  .invoice-header,
-  .invoice-footer,
-  .meterGrid,
-  .feeRow,
-  .totals .row {
+    overflow: hidden !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
 
-  .invoice-header {
-    padding: 14px 16px 12px !important;
-    background: #f3f6ff !important;
-  }
-
-  .title {
-    font-size: 18px !important;
-    margin: 0 0 12px !important;
-    text-align: center !important;
-    font-weight: 850 !important;
-    text-transform: uppercase !important;
-  }
-
-  .metaGrid {
-    display: grid !important;
-    grid-template-columns: 110px minmax(0, 1fr) 110px minmax(0, 1fr) !important;
-    gap: 10px 14px !important;
-    align-items: center !important;
-  }
-
-  .metaGrid > * {
-    min-width: 0 !important;
-  }
-
-  .mLabel {
-    color: #6b7280 !important;
-    font-weight: 650 !important;
-    font-size: 14px !important;
+  /* Tiêu đề phiếu */
+  .invoice-title,
+  .receipt-title,
+  .invoice-card h1,
+  .invoice-card h2 {
+    font-size: 15px !important;
     line-height: 1.2 !important;
-    white-space: nowrap !important;
+    padding: 6px 8px !important;
     margin: 0 !important;
-    display: flex !important;
-    align-items: center !important;
   }
 
-  .spanRest {
-    grid-column: 2 / -1 !important;
+  /* Phần thông tin đầu phiếu */
+  .invoice-info,
+  .invoice-header-grid,
+  .receipt-info,
+  .top-info-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 5px 8px !important;
+    padding: 7px 8px !important;
   }
 
-  .input,
-  .dateInput,
-  .cell-input {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    height: auto !important;
-    padding: 8px 12px !important;
-    font-size: 14px !important;
-    line-height: 1.25 !important;
-    border-radius: 12px !important;
-    border: 1px solid #d9deea !important;
-    background: #fff !important;
-    color: #111827 !important;
-    box-sizing: border-box !important;
+  /* Riêng dòng tên người thuê cho rộng hơn nếu đang span full */
+  .invoice-info .full,
+  .invoice-header-grid .full,
+  .receipt-info .full,
+  .top-info-grid .full {
+    grid-column: 1 / -1 !important;
   }
 
-  .dateInput {
-    appearance: none !important;
-    -webkit-appearance: none !important;
+  /* Giảm chiều cao input khi in */
+  input,
+  select,
+  textarea {
+    height: 20px !important;
+    min-height: 20px !important;
+    padding: 2px 6px !important;
+    font-size: 10.5px !important;
+    line-height: 1.1 !important;
+    border-radius: 5px !important;
   }
 
-  .table-wrap {
-    padding: 10px 12px 0 !important;
+  label,
+  .label,
+  .field-label {
+    font-size: 9.5px !important;
+    line-height: 1.1 !important;
+    margin-bottom: 2px !important;
   }
 
-  .sectionTitle {
-    margin-top: 10px !important;
-    margin-bottom: 6px !important;
-    font-size: 13px !important;
+  .field,
+  .form-field,
+  .invoice-field {
+    gap: 2px !important;
   }
 
-  .sectionTitleRow {
-    margin-top: 10px !important;
-    margin-bottom: 6px !important;
+  /* Các section trong phiếu */
+  .invoice-section,
+  .receipt-section,
+  .fixed-section,
+  .meter-section,
+  .summary-section {
+    padding: 5px 8px !important;
+    margin: 0 !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 
-  .feeRow,
-  .totals .row {
-    padding-top: 10px !important;
-    padding-bottom: 10px !important;
+  .section-title,
+  .invoice-section-title,
+  .receipt-section-title,
+  .invoice-card h3 {
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+    margin: 4px 0 4px !important;
   }
 
-  .feeName,
-  .meterTitle {
-    font-size: 13px !important;
+  /* Khoản cố định */
+  .fixed-costs,
+  .fixed-list,
+  .cost-table {
+    margin: 0 !important;
+    gap: 0 !important;
   }
 
-  .mfLabel,
-  .hint,
-  .meterSub {
+  .cost-row,
+  .fixed-row {
+    min-height: 23px !important;
+    padding: 3px 6px !important;
+  }
+
+  /* Điện nước */
+  .meter-card,
+  .utility-card {
+    margin: 4px 0 !important;
+    border-radius: 6px !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .meter-card-header,
+  .utility-card-header {
+    padding: 5px 7px !important;
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+  }
+
+  /* Ép layout điện nước về dạng ngang khi in, không dùng layout mobile */
+  .meter-grid,
+  .meter-row,
+  .meter-fields,
+  .utility-grid,
+  .utility-row {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 5px !important;
+    padding: 5px !important;
+  }
+
+  .meter-total-row,
+  .utility-total-row {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 5px !important;
+    padding: 0 5px 5px !important;
+  }
+
+  /* Tổng tiền */
+  .summary-box,
+  .total-box,
+  .invoice-summary {
+    width: 110mm !important;
+    max-width: 110mm !important;
+    margin-top: 4px !important;
+    margin-left: 0 !important;
+  }
+
+  .summary-row,
+  .total-row {
+    min-height: 23px !important;
+    padding: 3px 7px !important;
     font-size: 11px !important;
   }
 
-  .meterFields,
-  .meterBottom {
-    gap: 8px !important;
-  }
-
-  .summary {
-    grid-template-columns: 1.2fr 0.8fr !important;
-    gap: 10px !important;
-    margin-top: 12px !important;
-  }
-
-  .invoice-footer {
+  .summary-row strong,
+  .total-row strong {
     font-size: 11px !important;
-    padding: 10px 12px 12px !important;
+  }
+
+  /* Giảm khoảng cách chung */
+  p {
+    margin: 0 !important;
+  }
+
+  br {
+    display: none !important;
   }
 }
 .btn.success {

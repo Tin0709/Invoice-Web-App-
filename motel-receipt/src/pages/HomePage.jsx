@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import "../styles/home.css";
 import {
+  createId,
   formatCurrency,
   getAllInvoicesFlat,
   getInvoiceDebt,
@@ -75,7 +76,7 @@ export default function HomePage() {
     if (!name) return;
 
     const newBlock = {
-      id: crypto.randomUUID(),
+      id: createId(),
       name,
       rooms: [],
     };
@@ -163,7 +164,7 @@ export default function HomePage() {
     }
 
     const newRoom = {
-      id: crypto.randomUUID(),
+      id: createId(),
       roomName,
       tenantName,
       defaultRent,

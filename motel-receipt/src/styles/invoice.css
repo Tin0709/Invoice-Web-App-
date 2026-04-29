@@ -827,3 +827,23 @@
   background: #4f46e5;
   color: #fff;
 }
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .print-hidden,
+  .calculation-note,
+  .invoice-note,
+  .total-guide {
+    display: none !important;
+  }
+
+  .invoice-page,
+  .invoice-shell,
+  .invoice-container {
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+  }
+}

@@ -67,7 +67,12 @@ function MetersBlock({
     <>
       <div className="sectionTitleRow">
         <div className="sectionTitle">Chỉ số điện & nước</div>
-        <button className="btn tiny" type="button" onClick={applyPrevOld}>
+
+        <button
+          className="btn tiny no-print"
+          type="button"
+          onClick={applyPrevOld}
+        >
           ↥ Lấy số cũ tháng trước
         </button>
       </div>
@@ -476,17 +481,14 @@ export default function Invoice({
 
     isHydratingRef.current = true;
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMeta((prev) => ({
       ...prev,
       room: hydratedMeta.room || prev.room,
       tenant: hydratedMeta.tenant || prev.tenant,
     }));
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setRoomText(roomData.roomName || "");
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setF(hydratedF);
 
     const nextSnapshot = JSON.stringify({
@@ -498,7 +500,6 @@ export default function Invoice({
       blockId,
     });
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLastSavedSnapshot(nextSnapshot);
 
     const timer = setTimeout(() => {
@@ -541,6 +542,7 @@ export default function Invoice({
       setTimeout(() => window.print(), 60);
       return;
     }
+
     window.print();
   };
 
@@ -620,7 +622,7 @@ export default function Invoice({
 
   return (
     <>
-      <div className="topbar">
+      <div className="topbar no-print">
         <div className="chip">
           <span className="dot" />
           <b>Quản lý thu tiền</b>
@@ -644,7 +646,7 @@ export default function Invoice({
         </div>
       </div>
 
-      <div className="tabs" role="tablist" aria-label="Chuyển màn">
+      <div className="tabs no-print" role="tablist" aria-label="Chuyển màn">
         <button
           type="button"
           className={`tabBtn ${view === "invoice" ? "active" : ""}`}
@@ -784,8 +786,8 @@ export default function Invoice({
               <div className="sectionTitle">Tổng</div>
 
               <div className="summary">
-                <div className="note">
-                  1) Nhập Phòng + Tháng → số cũ tự lấy tháng trước (nếu có).
+                <div className="note no-print">
+                  1) Nhập Phòng + Tháng → số cũ tự lấy tháng trước nếu có.
                   <br />
                   2) Nhập số mới → tự tính tiền.
                   <br />
@@ -820,7 +822,7 @@ export default function Invoice({
                 </div>
               </div>
 
-              <footer className="invoice-footer">
+              <footer className="invoice-footer no-print">
                 <div>Dữ liệu chỉ vào lịch sử sau khi bấm Lưu.</div>
                 <div>
                   Phòng {meta.room || "—"} •{" "}

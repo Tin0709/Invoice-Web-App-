@@ -406,11 +406,15 @@ export default function HomePage() {
                               latestInvoice
                             );
 
+                            const invoiceQuery = latestInvoice
+                              ? `?year=${latestInvoice.year}&month=${latestInvoice.month}`
+                              : "";
+
                             return (
                               <div className="room-card" key={room.id}>
                                 <Link
                                   className="room-main"
-                                  to={`/invoice/${block.id}/${room.id}`}
+                                  to={`/invoice/${block.id}/${room.id}${invoiceQuery}`}
                                 >
                                   <h3>{room.roomName}</h3>
                                   <p>{room.tenantName}</p>
@@ -563,7 +567,7 @@ export default function HomePage() {
                   <Link
                     key={`${item.blockId}-${item.roomId}-${item.month}-${item.year}-${index}`}
                     className="history-item"
-                    to={`/invoice/${item.blockId}/${item.roomId}`}
+                    to={`/invoice/${item.blockId}/${item.roomId}?year=${item.year}&month=${item.month}`}
                   >
                     <div>
                       <strong>

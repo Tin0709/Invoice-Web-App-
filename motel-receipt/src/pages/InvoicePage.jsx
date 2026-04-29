@@ -1,21 +1,35 @@
-import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useCallback, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import Invoice from "../components/Invoice";
 import "../styles/invoice.css";
 import { loadData, findBlockById, findRoomById } from "../utils/storage";
 
 export default function InvoicePage() {
   const { blockId, roomId } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const data = loadData();
 
-  const block = findBlockById(data, blockId);
-  const room = findRoomById(data, blockId, roomId);
+  /*
+    Không gọi loadData() trực tiếp ở ngoài state.
+    Nếu gọi trực tiếp, mỗi lần render lại có thể làm roomData đổi object
+    và gây reset form trong Invoice.
+  */
+  const [pageData] = useState(() => loadData());
+
+  const block = findBlockById(pageData, blockId);
+  const room = findRoomById(pageData, blockId, roomId);
+
+  const initialYear = searchParams.get("year");
+  const initialMonth = searchParams.get("month");
 
   const [isDirty, setIsDirty] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [saveHandler, setSaveHandler] = useState(null);
+
+  const registerSaveHandler = useCallback((handler) => {
+    setSaveHandler(() => handler);
+  }, []);
 
   if (!block || !room) {
     return (
@@ -51,6 +65,7 @@ export default function InvoicePage() {
   const handleSaveAndLeave = async () => {
     if (typeof saveHandler === "function") {
       const ok = await saveHandler();
+
       if (!ok) return;
     }
 
@@ -82,8 +97,10 @@ export default function InvoicePage() {
           blockId={blockId}
           roomId={roomId}
           roomData={room}
+          initialYear={initialYear}
+          initialMonth={initialMonth}
           onDirtyChange={setIsDirty}
-          registerSaveHandler={setSaveHandler}
+          registerSaveHandler={registerSaveHandler}
         />
       </div>
 
@@ -91,19 +108,29 @@ export default function InvoicePage() {
         <div className="confirm-overlay no-print" onClick={handleStay}>
           <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
             <div className="confirm-badge">Chưa lưu</div>
+
             <h3>Bạn có thay đổi chưa được lưu</h3>
+
             <p>Bạn muốn lưu phiếu này trước khi rời trang hay không?</p>
 
             <div className="confirm-actions">
-              <button className="ghost-btn" onClick={handleStay}>
+              <button type="button" className="ghost-btn" onClick={handleStay}>
                 Ở lại
               </button>
 
-              <button className="ghost-btn" onClick={handleDiscard}>
+              <button
+                type="button"
+                className="ghost-btn"
+                onClick={handleDiscard}
+              >
                 Huỷ thay đổi
               </button>
 
-              <button className="home-primary-btn" onClick={handleSaveAndLeave}>
+              <button
+                type="button"
+                className="home-primary-btn"
+                onClick={handleSaveAndLeave}
+              >
                 Lưu
               </button>
             </div>

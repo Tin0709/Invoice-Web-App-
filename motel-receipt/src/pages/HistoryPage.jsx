@@ -64,6 +64,7 @@ export default function HistoryPage() {
     if (typeof confirmState.onConfirm === "function") {
       confirmState.onConfirm();
     }
+
     closeConfirm();
   };
 
@@ -78,6 +79,7 @@ export default function HistoryPage() {
           item.year,
           item.month
         );
+
         setData(next);
       },
     });
@@ -103,7 +105,9 @@ export default function HistoryPage() {
               <Link className="history-back" to="/">
                 ← Quay về trang chủ
               </Link>
+
               <h1>Quản lí lịch sử phiếu</h1>
+
               <p>
                 Xem toàn bộ phiếu đã lưu, nhóm theo từng tháng để dễ quản lí.
               </p>
@@ -124,10 +128,12 @@ export default function HistoryPage() {
                       <h2>
                         {group.month}/{group.year}
                       </h2>
+
                       <span>{group.items.length} phiếu</span>
                     </div>
 
                     <button
+                      type="button"
                       className="danger-btn"
                       onClick={() => handleDeleteMonth(group)}
                     >
@@ -143,10 +149,11 @@ export default function HistoryPage() {
                       >
                         <Link
                           className="timeline-main"
-                          to={`/invoice/${item.blockId}/${item.roomId}`}
+                          to={`/invoice/${item.blockId}/${item.roomId}?year=${item.year}&month=${item.month}`}
                         >
                           <div className="timeline-left">
                             <strong>{item.roomName}</strong>
+
                             <span>
                               {item.blockName} - {item.tenantName}
                             </span>
@@ -160,6 +167,7 @@ export default function HistoryPage() {
                         </Link>
 
                         <button
+                          type="button"
                           className="danger-btn small-btn"
                           onClick={() => handleDeleteOne(item)}
                         >
@@ -179,14 +187,21 @@ export default function HistoryPage() {
         <div className="confirm-overlay" onClick={closeConfirm}>
           <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
             <div className="confirm-badge">Xác nhận</div>
+
             <h3>{confirmState.title}</h3>
             <p>{confirmState.message}</p>
 
             <div className="confirm-actions">
-              <button className="ghost-btn" onClick={closeConfirm}>
+              <button
+                type="button"
+                className="ghost-btn"
+                onClick={closeConfirm}
+              >
                 Huỷ
               </button>
+
               <button
+                type="button"
                 className="danger-btn confirm-danger"
                 onClick={handleConfirmOk}
               >

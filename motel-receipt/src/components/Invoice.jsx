@@ -106,6 +106,7 @@ const createInitialInvoiceState = ({
   const { y: year, m: month } = splitISO(initialDate);
 
   const freshRoom = findFreshRoom(blockId, roomId, roomData);
+
   const currentInvoice = freshRoom
     ? getInvoiceByPeriod(freshRoom, Number(year), Number(month))
     : null;
@@ -763,17 +764,7 @@ export default function Invoice({
             applyPrevOld={applyPrevOld}
           />
 
-          <div className="sectionTitle">Tổng</div>
-
-          <div className="summary">
-            <div className="note no-print">
-              1) Nhập Phòng + Tháng → số cũ tự lấy tháng trước nếu có.
-              <br />
-              2) Nhập số mới → tự tính tiền.
-              <br />
-              3) Bấm Lưu để ghi vào lịch sử.
-            </div>
-
+          <div className="summary summary-only-totals">
             <div className="totals">
               <div className="row total">
                 <div className="k">TỔNG CỘNG:</div>

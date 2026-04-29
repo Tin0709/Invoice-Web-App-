@@ -880,3 +880,24 @@
     display: none !important;
   }
 }
+.summary-only-totals {
+  display: flex;
+  justify-content: center;
+  margin-top: 18px;
+  margin-bottom: 18px;
+}
+
+.summary-only-totals .totals {
+  width: 100%;
+  max-width: 720px;
+}
+
+@media (max-width: 620px) {
+  .summary-only-totals {
+    justify-content: stretch;
+  }
+
+  .summary-only-totals .totals {
+    max-width: 100%;
+  }
+}

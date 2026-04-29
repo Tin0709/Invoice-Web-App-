@@ -55,14 +55,7 @@ const daysInMonth = (year, month) => {
 /* =========================
    Child blocks
 ========================= */
-function MetersBlock({
-  compact = false,
-  f,
-  calc,
-  setDigitsField,
-  setMoneyField,
-  applyPrevOld,
-}) {
+function MetersBlock({ f, calc, setDigitsField, setMoneyField, applyPrevOld }) {
   return (
     <>
       <div className="sectionTitleRow">
@@ -198,47 +191,6 @@ function MetersBlock({
           </div>
         </div>
       </div>
-
-      {compact && (
-        <div className="miniTotals">
-          <div className="miniBox">
-            <div className="k">Tiền điện</div>
-            <div className="v">{fmtVND(calc.elecAmount)}</div>
-          </div>
-          <div className="miniBox">
-            <div className="k">Tiền nước</div>
-            <div className="v">{fmtVND(calc.waterAmount)}</div>
-          </div>
-          <div className="miniBox">
-            <div className="k">Tổng điện + nước</div>
-            <div className="v">
-              {fmtVND(calc.elecAmount + calc.waterAmount)}
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
-
-function TrashBlock({ f, setMoneyField }) {
-  return (
-    <>
-      <div className="sectionTitle">Tiền rác</div>
-      <div className="feesGrid">
-        <div className="feeRow">
-          <div className="feeName">Tiền rác</div>
-          <div className="feeRight">
-            <input
-              className="cell-input money"
-              value={f.trashUnit}
-              onChange={setMoneyField("trashUnit")}
-              inputMode="numeric"
-              placeholder="15.000"
-            />
-          </div>
-        </div>
-      </div>
     </>
   );
 }
@@ -247,6 +199,7 @@ function FixedFeesBlock({ f, setMoneyField }) {
   return (
     <>
       <div className="sectionTitle">Khoản cố định</div>
+
       <div className="feesGrid">
         <div className="feeRow">
           <div className="feeName">Tiền phòng</div>
@@ -288,8 +241,6 @@ export default function Invoice({
   onDirtyChange,
   registerSaveHandler,
 }) {
-  const [view, setView] = useState("invoice");
-
   const [meta, setMeta] = useState(() => {
     const now = new Date();
     const yyyy = now.getFullYear();
@@ -329,6 +280,8 @@ export default function Invoice({
 
   const [saveMessage, setSaveMessage] = useState("");
   const [lastSavedSnapshot, setLastSavedSnapshot] = useState(null);
+
+  const lastHydratedKeyRef = useRef("");
 
   const calc = useMemo(() => {
     const rent = parseMoney(f.rentAmount);
@@ -384,6 +337,10 @@ export default function Invoice({
   const setDate = (e) => {
     const value = e.target.value;
     setMeta((s) => ({ ...s, date: value }));
+
+    const { y, m } = splitISO(value);
+    if (m) setMonthText(m);
+    if (y) setYearText(y);
   };
 
   const setDigitsField = (field) => (e) => {
@@ -434,9 +391,6 @@ export default function Invoice({
     setRoomText(next);
   };
 
-  const isHydratingRef = useRef(false);
-  const lastHydratedKeyRef = useRef("");
-
   useEffect(() => {
     if (!blockId || !roomId || !roomData || !year || !month) return;
 
@@ -479,8 +433,6 @@ export default function Invoice({
           paid: "",
         };
 
-    isHydratingRef.current = true;
-
     const nextSnapshot = JSON.stringify({
       meta: hydratedMeta,
       f: hydratedF,
@@ -498,22 +450,18 @@ export default function Invoice({
       }));
 
       setRoomText(roomData.roomName || "");
-
       setF(hydratedF);
-
       setLastSavedSnapshot(nextSnapshot);
-
-      isHydratingRef.current = false;
     }, 0);
 
     return () => {
       window.clearTimeout(timer);
-      isHydratingRef.current = false;
     };
   }, [blockId, roomId, roomData, year, month, meta.date]);
 
   const applyPrevOld = () => {
     if (!roomData || !year || !month) return;
+
     const prev = getPreviousInvoice(roomData, year, month);
     if (!prev) return;
 
@@ -540,12 +488,6 @@ export default function Invoice({
   };
 
   const doPrint = () => {
-    if (view !== "invoice") {
-      setView("invoice");
-      setTimeout(() => window.print(), 60);
-      return;
-    }
-
     window.print();
   };
 
@@ -562,12 +504,16 @@ export default function Invoice({
   useEffect(() => {
     const handleBeforeUnload = (e) => {
       if (!isDirty) return;
+
       e.preventDefault();
       e.returnValue = "";
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
   }, [isDirty]);
 
   const handleSave = useCallback(async () => {
@@ -626,13 +572,7 @@ export default function Invoice({
   return (
     <>
       <div className="topbar no-print">
-        <div className="chip">
-          <span className="dot" />
-          <b>Quản lý thu tiền</b>
-          <span className="chip-muted">— (v6)</span>
-        </div>
-
-        <div className="actions">
+        <div className="actions actions-only">
           {saveMessage && <div className="save-badge">{saveMessage}</div>}
 
           <button className="btn success" type="button" onClick={handleSave}>
@@ -649,41 +589,9 @@ export default function Invoice({
         </div>
       </div>
 
-      <div className="tabs no-print" role="tablist" aria-label="Chuyển màn">
-        <button
-          type="button"
-          className={`tabBtn ${view === "invoice" ? "active" : ""}`}
-          onClick={() => setView("invoice")}
-        >
-          Phiếu thu
-        </button>
-
-        <button
-          type="button"
-          className={`tabBtn ${view === "meters" ? "active" : ""}`}
-          onClick={() => setView("meters")}
-        >
-          Điện & Nước
-        </button>
-
-        <button
-          type="button"
-          className={`tabBtn ${view === "trash" ? "active" : ""}`}
-          onClick={() => setView("trash")}
-        >
-          Tiền rác
-        </button>
-      </div>
-
       <section className="invoice" aria-label="Phiếu thu">
         <header className="invoice-header">
-          <div className="title">
-            {view === "meters"
-              ? "BẢNG ĐIỆN & NƯỚC"
-              : view === "trash"
-              ? "BẢNG TIỀN RÁC"
-              : "PHIẾU THU TIỀN PHÒNG TRỌ"}
-          </div>
+          <div className="title">PHIẾU THU TIỀN PHÒNG TRỌ</div>
 
           <div className="metaGrid">
             <div className="mLabel">Tháng:</div>
@@ -759,81 +667,62 @@ export default function Invoice({
         </header>
 
         <div className="table-wrap">
-          {view === "meters" && (
-            <MetersBlock
-              compact
-              f={f}
-              calc={calc}
-              setDigitsField={setDigitsField}
-              setMoneyField={setMoneyField}
-              applyPrevOld={applyPrevOld}
-            />
-          )}
+          <FixedFeesBlock f={f} setMoneyField={setMoneyField} />
 
-          {view === "trash" && (
-            <TrashBlock f={f} setMoneyField={setMoneyField} />
-          )}
+          <MetersBlock
+            f={f}
+            calc={calc}
+            setDigitsField={setDigitsField}
+            setMoneyField={setMoneyField}
+            applyPrevOld={applyPrevOld}
+          />
 
-          {view === "invoice" && (
-            <>
-              <FixedFeesBlock f={f} setMoneyField={setMoneyField} />
+          <div className="sectionTitle">Tổng</div>
 
-              <MetersBlock
-                f={f}
-                calc={calc}
-                setDigitsField={setDigitsField}
-                setMoneyField={setMoneyField}
-                applyPrevOld={applyPrevOld}
-              />
+          <div className="summary">
+            <div className="note no-print">
+              1) Nhập Phòng + Tháng → số cũ tự lấy tháng trước nếu có.
+              <br />
+              2) Nhập số mới → tự tính tiền.
+              <br />
+              3) Bấm Lưu để ghi vào lịch sử.
+            </div>
 
-              <div className="sectionTitle">Tổng</div>
+            <div className="totals">
+              <div className="row total">
+                <div className="k">TỔNG CỘNG:</div>
+                <div className="v">{fmtVND(calc.total)} VND</div>
+              </div>
 
-              <div className="summary">
-                <div className="note no-print">
-                  1) Nhập Phòng + Tháng → số cũ tự lấy tháng trước nếu có.
-                  <br />
-                  2) Nhập số mới → tự tính tiền.
-                  <br />
-                  3) Bấm Lưu để ghi vào lịch sử.
-                </div>
-
-                <div className="totals">
-                  <div className="row total">
-                    <div className="k">TỔNG CỘNG:</div>
-                    <div className="v">{fmtVND(calc.total)} VND</div>
-                  </div>
-
-                  <div className="row">
-                    <div className="k">ĐÃ TRẢ:</div>
-                    <div className="v-input">
-                      <input
-                        className="cell-input money"
-                        value={f.paid}
-                        onChange={setMoneyField("paid")}
-                        inputMode="numeric"
-                        placeholder="0"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="row">
-                    <div className="k">CÒN THIẾU:</div>
-                    <div className={`v ${calc.debt === 0 ? "ok" : "debt"}`}>
-                      {fmtVND(calc.debt)}
-                    </div>
-                  </div>
+              <div className="row">
+                <div className="k">ĐÃ TRẢ:</div>
+                <div className="v-input">
+                  <input
+                    className="cell-input money"
+                    value={f.paid}
+                    onChange={setMoneyField("paid")}
+                    inputMode="numeric"
+                    placeholder="0"
+                  />
                 </div>
               </div>
 
-              <footer className="invoice-footer no-print">
-                <div>Dữ liệu chỉ vào lịch sử sau khi bấm Lưu.</div>
-                <div>
-                  Phòng {meta.room || "—"} •{" "}
-                  {year && month ? `${year}-${month}` : "—"}
+              <div className="row">
+                <div className="k">CÒN THIẾU:</div>
+                <div className={`v ${calc.debt === 0 ? "ok" : "debt"}`}>
+                  {fmtVND(calc.debt)}
                 </div>
-              </footer>
-            </>
-          )}
+              </div>
+            </div>
+          </div>
+
+          <footer className="invoice-footer no-print">
+            <div>Dữ liệu chỉ vào lịch sử sau khi bấm Lưu.</div>
+            <div>
+              Phòng {meta.room || "—"} •{" "}
+              {year && month ? `${year}-${month}` : "—"}
+            </div>
+          </footer>
         </div>
       </section>
     </>

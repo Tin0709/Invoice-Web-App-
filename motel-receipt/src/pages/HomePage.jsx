@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import "../styles/home.css";
+import "../styles/invoice.css";
 import {
   createId,
   formatCurrency,
@@ -28,9 +29,11 @@ export default function HomePage() {
     const stored = loadData();
     return stored.blocks.length > 0 ? stored.blocks[0].id : null;
   });
+
   const [search, setSearch] = useState("");
   const [roomInputs, setRoomInputs] = useState({});
   const [openAddRoomBlockId, setOpenAddRoomBlockId] = useState(null);
+  const [roomToast, setRoomToast] = useState("");
 
   const [confirmState, setConfirmState] = useState({
     open: false,
@@ -43,6 +46,14 @@ export default function HomePage() {
   useEffect(() => {
     saveData(data);
   }, [data]);
+
+  const showRoomToast = (message) => {
+    setRoomToast(message);
+
+    setTimeout(() => {
+      setRoomToast("");
+    }, 1800);
+  };
 
   const openConfirm = ({ type, title, message, onConfirm }) => {
     setConfirmState({
@@ -68,12 +79,17 @@ export default function HomePage() {
     if (typeof confirmState.onConfirm === "function") {
       confirmState.onConfirm();
     }
+
     closeConfirm();
   };
 
   const handleAddBlock = () => {
     const name = newBlockName.trim();
-    if (!name) return;
+
+    if (!name) {
+      showRoomToast("Vui lòng nhập tên dãy.");
+      return;
+    }
 
     const newBlock = {
       id: createId(),
@@ -89,6 +105,8 @@ export default function HomePage() {
     setExpandedBlockId(newBlock.id);
     setOpenAddRoomBlockId(newBlock.id);
     setNewBlockName("");
+
+    showRoomToast("✅ Đã tạo dãy mới.");
   };
 
   const handleDeleteBlock = (blockId) => {
@@ -119,12 +137,15 @@ export default function HomePage() {
         if (openAddRoomBlockId === blockId) {
           setOpenAddRoomBlockId(null);
         }
+
+        showRoomToast("Đã xoá dãy.");
       },
     });
   };
 
   const handleRenameBlock = (blockId, oldName) => {
     const newName = window.prompt("Nhập tên dãy mới:", oldName);
+
     if (!newName || !newName.trim()) return;
 
     setData((prev) => ({
@@ -133,12 +154,14 @@ export default function HomePage() {
         block.id === blockId ? { ...block, name: newName.trim() } : block
       ),
     }));
+
+    showRoomToast("✅ Đã đổi tên dãy.");
   };
 
   const handleRoomInputChange = (blockId, field, value) => {
     let nextValue = value;
 
-    if (field === "defaultRent" || field === "defaultTrash") {
+    if (field === "defaultRent") {
       nextValue = formatMoneyInput(value);
     }
 
@@ -156,10 +179,9 @@ export default function HomePage() {
     const roomName = (values.roomName || "").trim();
     const tenantName = (values.tenantName || "").trim();
     const defaultRent = parseMoneyInput(values.defaultRent || 0);
-    const defaultTrash = parseMoneyInput(values.defaultTrash || 15000);
 
     if (!roomName || !tenantName) {
-      alert("Vui lòng nhập tên phòng và tên người thuê.");
+      showRoomToast("Vui lòng nhập tên phòng và tên người thuê.");
       return;
     }
 
@@ -168,7 +190,7 @@ export default function HomePage() {
       roomName,
       tenantName,
       defaultRent,
-      defaultTrash,
+      defaultTrash: 15000,
       invoices: [],
     };
 
@@ -187,11 +209,11 @@ export default function HomePage() {
         roomName: "",
         tenantName: "",
         defaultRent: "",
-        defaultTrash: formatMoneyInput(15000),
       },
     }));
 
     setOpenAddRoomBlockId(null);
+    showRoomToast("✅ Đã thêm phòng mới thành công.");
   };
 
   const handleDeleteRoom = (blockId, roomId) => {
@@ -216,12 +238,15 @@ export default function HomePage() {
               : block
           ),
         }));
+
+        showRoomToast("Đã xoá phòng.");
       },
     });
   };
 
   const filteredBlocks = useMemo(() => {
     const keyword = search.trim().toLowerCase();
+
     if (!keyword) return data.blocks;
 
     return data.blocks
@@ -230,6 +255,7 @@ export default function HomePage() {
         rooms: block.rooms.filter((room) => {
           const roomName = room.roomName.toLowerCase();
           const tenantName = room.tenantName.toLowerCase();
+
           return roomName.includes(keyword) || tenantName.includes(keyword);
         }),
       }))
@@ -245,6 +271,12 @@ export default function HomePage() {
 
   return (
     <>
+      {roomToast && (
+        <div className="save-toast no-print" role="status">
+          {roomToast}
+        </div>
+      )}
+
       <div className="home-page">
         <div className="home-shell">
           <header className="home-header">
@@ -262,7 +294,10 @@ export default function HomePage() {
                 value={newBlockName}
                 onChange={(e) => setNewBlockName(e.target.value)}
               />
-              <button onClick={handleAddBlock}>+ Tạo dãy</button>
+
+              <button type="button" onClick={handleAddBlock}>
+                + Tạo dãy
+              </button>
             </div>
 
             <div className="toolbar-right">
@@ -290,6 +325,7 @@ export default function HomePage() {
                   <div className="block-card card" key={block.id}>
                     <div className="block-header">
                       <button
+                        type="button"
                         className="block-title-button"
                         onClick={() =>
                           setExpandedBlockId(isOpen ? null : block.id)
@@ -302,7 +338,9 @@ export default function HomePage() {
                         <span className="room-count">
                           {block.rooms.length} phòng
                         </span>
+
                         <button
+                          type="button"
                           className="ghost-btn"
                           onClick={() =>
                             handleRenameBlock(block.id, block.name)
@@ -310,7 +348,9 @@ export default function HomePage() {
                         >
                           Đổi tên
                         </button>
+
                         <button
+                          type="button"
                           className="danger-btn"
                           onClick={() => handleDeleteBlock(block.id)}
                         >
@@ -334,11 +374,13 @@ export default function HomePage() {
                                 >
                                   <h3>{room.roomName}</h3>
                                   <p>{room.tenantName}</p>
+
                                   <div className="room-meta">
                                     <span>
                                       Tiền phòng:{" "}
                                       {formatCurrency(room.defaultRent)} đ
                                     </span>
+
                                     <span
                                       className={
                                         latestDebt > 0
@@ -354,6 +396,7 @@ export default function HomePage() {
 
                                 <div className="room-actions">
                                   <button
+                                    type="button"
                                     className="danger-btn small-btn"
                                     onClick={() =>
                                       handleDeleteRoom(block.id, room.id)
@@ -423,26 +466,14 @@ export default function HomePage() {
                                 }
                               />
 
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                placeholder="Tiền rác mặc định"
-                                value={
-                                  inputs.defaultTrash ?? formatMoneyInput(15000)
-                                }
-                                onChange={(e) =>
-                                  handleRoomInputChange(
-                                    block.id,
-                                    "defaultTrash",
-                                    e.target.value
-                                  )
-                                }
-                              />
-
                               <div className="add-room-card-actions">
-                                <button onClick={() => handleAddRoom(block.id)}>
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddRoom(block.id)}
+                                >
                                   + Thêm phòng
                                 </button>
+
                                 <button
                                   type="button"
                                   className="ghost-btn"
@@ -493,10 +524,12 @@ export default function HomePage() {
                       <strong>
                         {item.month}/{item.year}
                       </strong>
+
                       <span>
                         {item.blockName} - {item.roomName}
                       </span>
                     </div>
+
                     <div>
                       <span>{item.tenantName}</span>
                     </div>
@@ -512,14 +545,21 @@ export default function HomePage() {
         <div className="confirm-overlay" onClick={closeConfirm}>
           <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
             <div className="confirm-badge">Xác nhận</div>
+
             <h3>{confirmState.title}</h3>
             <p>{confirmState.message}</p>
 
             <div className="confirm-actions">
-              <button className="ghost-btn" onClick={closeConfirm}>
+              <button
+                type="button"
+                className="ghost-btn"
+                onClick={closeConfirm}
+              >
                 Huỷ
               </button>
+
               <button
+                type="button"
                 className="danger-btn confirm-danger"
                 onClick={handleConfirmOk}
               >

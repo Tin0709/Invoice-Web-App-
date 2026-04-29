@@ -33,6 +33,27 @@ function createDefaultData() {
   };
 }
 
+function normalizeData(data) {
+  if (!data || !Array.isArray(data.blocks)) {
+    return createDefaultData();
+  }
+
+  return {
+    ...data,
+    blocks: data.blocks.map((block) => ({
+      ...block,
+      rooms: Array.isArray(block.rooms)
+        ? block.rooms.map((room) => ({
+            ...room,
+            invoices: Array.isArray(room.invoices) ? room.invoices : [],
+            defaultRent: Number(room.defaultRent || 0),
+            defaultTrash: Number(room.defaultTrash || 15000),
+          }))
+        : [],
+    })),
+  };
+}
+
 export function loadData() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -44,14 +65,7 @@ export function loadData() {
     }
 
     const parsed = JSON.parse(raw);
-
-    if (!parsed || !Array.isArray(parsed.blocks)) {
-      const defaultData = createDefaultData();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultData));
-      return defaultData;
-    }
-
-    return parsed;
+    return normalizeData(parsed);
   } catch (error) {
     console.error("loadData error:", error);
     return createDefaultData();
@@ -60,9 +74,12 @@ export function loadData() {
 
 export function saveData(data) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    const normalized = normalizeData(data);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+    return normalized;
   } catch (error) {
     console.error("saveData error:", error);
+    return data;
   }
 }
 
@@ -77,19 +94,23 @@ export function findBlockById(data, blockId) {
 export function findRoomById(data, blockId, roomId) {
   const block = findBlockById(data, blockId);
   if (!block) return null;
+
   return block.rooms.find((room) => room.id === roomId);
 }
 
 export function sortInvoicesDesc(invoices = []) {
   return [...invoices].sort((a, b) => {
-    const dateA = new Date(a.year, a.month - 1, 1).getTime();
-    const dateB = new Date(b.year, b.month - 1, 1).getTime();
+    const dateA = new Date(Number(a.year), Number(a.month) - 1, 1).getTime();
+    const dateB = new Date(Number(b.year), Number(b.month) - 1, 1).getTime();
+
     return dateB - dateA;
   });
 }
 
 export function getInvoiceByPeriod(room, year, month) {
-  if (!room?.invoices?.length) return null;
+  if (!room || !Array.isArray(room.invoices) || room.invoices.length === 0) {
+    return null;
+  }
 
   return (
     room.invoices.find(
@@ -115,11 +136,18 @@ export function getPreviousMonth(year, month) {
 
 export function getPreviousInvoice(room, year, month) {
   const prev = getPreviousMonth(year, month);
+
   if (!prev) return null;
+
   return getInvoiceByPeriod(room, prev.year, prev.month);
 }
 
-export function upsertInvoiceForRoom(blockId, roomId, invoicePayload) {
+export function upsertInvoiceForRoom(
+  blockId,
+  roomId,
+  invoicePayload,
+  roomUpdates = {}
+) {
   const data = loadData();
 
   const nextData = {
@@ -153,6 +181,7 @@ export function upsertInvoiceForRoom(blockId, roomId, invoicePayload) {
 
           return {
             ...room,
+            ...roomUpdates,
             invoices,
           };
         }),
@@ -160,8 +189,7 @@ export function upsertInvoiceForRoom(blockId, roomId, invoicePayload) {
     }),
   };
 
-  saveData(nextData);
-  return nextData;
+  return saveData(nextData);
 }
 
 export function updateRoomInfo(blockId, roomId, updates) {
@@ -181,8 +209,7 @@ export function updateRoomInfo(blockId, roomId, updates) {
     }),
   };
 
-  saveData(nextData);
-  return nextData;
+  return saveData(nextData);
 }
 
 function parseMoneyLike(value) {
@@ -194,39 +221,49 @@ export function getInvoiceDebt(invoice) {
 
   const rent = parseMoneyLike(invoice.rentAmount);
   const trash = parseMoneyLike(invoice.trashUnit);
+
   const elecOld = parseMoneyLike(invoice.elecOld);
   const elecNew = parseMoneyLike(invoice.elecNew);
   const elecUnit = parseMoneyLike(invoice.elecUnit);
+
   const waterOld = parseMoneyLike(invoice.waterOld);
   const waterNew = parseMoneyLike(invoice.waterNew);
   const waterUnit = parseMoneyLike(invoice.waterUnit);
+
   const paid = parseMoneyLike(invoice.paid);
 
   const elecUsed = Math.max(0, elecNew - elecOld);
   const waterUsed = Math.max(0, waterNew - waterOld);
 
   const total = rent + trash + elecUsed * elecUnit + waterUsed * waterUnit;
+
   return Math.max(0, total - paid);
 }
 
 export function getLatestInvoice(room) {
-  if (!room?.invoices?.length) return null;
+  if (!room || !Array.isArray(room.invoices) || room.invoices.length === 0) {
+    return null;
+  }
+
   return sortInvoicesDesc(room.invoices)[0];
 }
 
 export function getAllInvoicesFlat(data) {
   const all = [];
+  const safeData = normalizeData(data);
 
-  data.blocks.forEach((block) => {
+  safeData.blocks.forEach((block) => {
     block.rooms.forEach((room) => {
-      room.invoices.forEach((invoice) => {
+      const invoices = Array.isArray(room.invoices) ? room.invoices : [];
+
+      invoices.forEach((invoice) => {
         all.push({
           ...invoice,
           blockId: block.id,
           roomId: room.id,
           blockName: block.name,
-          roomName: room.roomName,
-          tenantName: room.tenantName,
+          roomName: invoice.roomName || room.roomName,
+          tenantName: invoice.tenantName || room.tenantName,
           debt: getInvoiceDebt(invoice),
         });
       });
@@ -249,9 +286,11 @@ export function deleteInvoice(blockId, roomId, year, month) {
         rooms: block.rooms.map((room) => {
           if (room.id !== roomId) return room;
 
+          const invoices = Array.isArray(room.invoices) ? room.invoices : [];
+
           return {
             ...room,
-            invoices: room.invoices.filter(
+            invoices: invoices.filter(
               (invoice) =>
                 !(
                   Number(invoice.year) === Number(year) &&
@@ -264,8 +303,7 @@ export function deleteInvoice(blockId, roomId, year, month) {
     }),
   };
 
-  saveData(nextData);
-  return nextData;
+  return saveData(nextData);
 }
 
 export function deleteInvoicesByMonth(year, month) {
@@ -275,19 +313,22 @@ export function deleteInvoicesByMonth(year, month) {
     ...data,
     blocks: data.blocks.map((block) => ({
       ...block,
-      rooms: block.rooms.map((room) => ({
-        ...room,
-        invoices: room.invoices.filter(
-          (invoice) =>
-            !(
-              Number(invoice.year) === Number(year) &&
-              Number(invoice.month) === Number(month)
-            )
-        ),
-      })),
+      rooms: block.rooms.map((room) => {
+        const invoices = Array.isArray(room.invoices) ? room.invoices : [];
+
+        return {
+          ...room,
+          invoices: invoices.filter(
+            (invoice) =>
+              !(
+                Number(invoice.year) === Number(year) &&
+                Number(invoice.month) === Number(month)
+              )
+          ),
+        };
+      }),
     })),
   };
 
-  saveData(nextData);
-  return nextData;
+  return saveData(nextData);
 }

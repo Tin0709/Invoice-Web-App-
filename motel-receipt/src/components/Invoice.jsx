@@ -1,18 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import "../styles/invoice.css";
 import {
   getInvoiceByPeriod,
   getPreviousInvoice,
   loadData,
-  updateRoomInfo,
-  upsertInvoiceForRoom,
+  saveData,
 } from "../utils/storage";
 
 /* =========================
    Helpers
 ========================= */
-const DRAFT_STORAGE_KEY = "motel_receipt_invoice_drafts_v1";
-
 const parseMoney = (v) => {
   const raw = String(v ?? "").replace(/[^\d]/g, "");
   return raw ? Number(raw) : 0;
@@ -58,6 +55,7 @@ const daysInMonth = (year, month) => {
 const getQueryPeriod = () => {
   try {
     const params = new URLSearchParams(window.location.search);
+
     return {
       queryYear: params.get("year"),
       queryMonth: params.get("month"),
@@ -83,55 +81,87 @@ const getInitialInvoiceDate = (initialYear, initialMonth) => {
   return toISODate(yyyy, safeMonth, safeDay);
 };
 
-const getDraftKey = (blockId, roomId, year, month) => {
-  return `${blockId}__${roomId}__${Number(year)}__${Number(month)}`;
+const findFreshRoom = (blockId, roomId, fallbackRoom) => {
+  const data = loadData();
+  const block = data.blocks?.find((item) => item.id === blockId);
+  const room = block?.rooms?.find((item) => item.id === roomId);
+
+  return room || fallbackRoom || null;
 };
 
-const loadAllDrafts = () => {
-  try {
-    const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch {
-    return {};
-  }
-};
+const createInitialInvoiceState = ({
+  blockId,
+  roomId,
+  roomData,
+  initialYear,
+  initialMonth,
+}) => {
+  const { queryYear, queryMonth } = getQueryPeriod();
 
-const saveAllDrafts = (drafts) => {
-  try {
-    localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(drafts));
-  } catch {
-    // ignore localStorage error
-  }
-};
+  const initialDate = getInitialInvoiceDate(
+    initialYear || queryYear,
+    initialMonth || queryMonth
+  );
 
-const loadInvoiceDraft = (blockId, roomId, year, month) => {
-  const key = getDraftKey(blockId, roomId, year, month);
-  const drafts = loadAllDrafts();
-  return drafts[key] || null;
-};
+  const { y: year, m: month } = splitISO(initialDate);
 
-const saveInvoiceDraft = (blockId, roomId, year, month, draft) => {
-  const key = getDraftKey(blockId, roomId, year, month);
-  const drafts = loadAllDrafts();
+  const freshRoom = findFreshRoom(blockId, roomId, roomData);
+  const currentInvoice = freshRoom
+    ? getInvoiceByPeriod(freshRoom, Number(year), Number(month))
+    : null;
 
-  drafts[key] = {
-    ...draft,
-    updatedAt: Date.now(),
+  const prevInvoice = freshRoom
+    ? getPreviousInvoice(freshRoom, Number(year), Number(month))
+    : null;
+
+  const meta = {
+    room:
+      currentInvoice?.roomName ||
+      freshRoom?.roomName ||
+      roomData?.roomName ||
+      "",
+    tenant:
+      currentInvoice?.tenantName ||
+      freshRoom?.tenantName ||
+      roomData?.tenantName ||
+      "",
+    date: currentInvoice?.date || initialDate,
   };
 
-  saveAllDrafts(drafts);
-};
+  const f = currentInvoice
+    ? {
+        rentAmount:
+          currentInvoice.rentAmount ?? fmtVND(freshRoom?.defaultRent || 0),
+        trashUnit:
+          currentInvoice.trashUnit ?? fmtVND(freshRoom?.defaultTrash || 15000),
+        elecOld: digits(currentInvoice.elecOld),
+        elecNew: digits(currentInvoice.elecNew),
+        elecUnit: currentInvoice.elecUnit ?? "3.200",
+        waterOld: digits(currentInvoice.waterOld),
+        waterNew: digits(currentInvoice.waterNew),
+        waterUnit: currentInvoice.waterUnit ?? "12.000",
+        paid: currentInvoice.paid ?? "",
+      }
+    : {
+        rentAmount: fmtVND(
+          freshRoom?.defaultRent || roomData?.defaultRent || 0
+        ),
+        trashUnit: fmtVND(
+          freshRoom?.defaultTrash || roomData?.defaultTrash || 15000
+        ),
+        elecOld: prevInvoice?.elecNew ? digits(prevInvoice.elecNew) : "",
+        elecNew: "",
+        elecUnit: prevInvoice?.elecUnit ?? "3.200",
+        waterOld: prevInvoice?.waterNew ? digits(prevInvoice.waterNew) : "",
+        waterNew: "",
+        waterUnit: prevInvoice?.waterUnit ?? "12.000",
+        paid: "",
+      };
 
-const clearInvoiceDraft = (blockId, roomId, year, month) => {
-  const key = getDraftKey(blockId, roomId, year, month);
-  const drafts = loadAllDrafts();
-
-  if (drafts[key]) {
-    delete drafts[key];
-    saveAllDrafts(drafts);
-  }
+  return {
+    meta,
+    f,
+  };
 };
 
 /* =========================
@@ -325,18 +355,21 @@ export default function Invoice({
   onDirtyChange,
   registerSaveHandler,
 }) {
-  const [meta, setMeta] = useState(() => {
-    const { queryYear, queryMonth } = getQueryPeriod();
+  const initialState = useMemo(
+    () =>
+      createInitialInvoiceState({
+        blockId,
+        roomId,
+        roomData,
+        initialYear,
+        initialMonth,
+      }),
+    [blockId, roomId, roomData, initialYear, initialMonth]
+  );
 
-    return {
-      room: roomData?.roomName || "",
-      tenant: roomData?.tenantName || "",
-      date: getInitialInvoiceDate(
-        initialYear || queryYear,
-        initialMonth || queryMonth
-      ),
-    };
-  });
+  const [meta, setMeta] = useState(initialState.meta);
+  const [f, setF] = useState(initialState.f);
+  const [saveMessage, setSaveMessage] = useState("");
 
   const {
     y: year,
@@ -346,49 +379,18 @@ export default function Invoice({
 
   const [monthText, setMonthText] = useState(month);
   const [yearText, setYearText] = useState(year);
-  const [roomText, setRoomText] = useState(roomData?.roomName || "");
+  const [roomText, setRoomText] = useState(meta.room);
 
-  const [f, setF] = useState({
-    rentAmount: roomData?.defaultRent ? fmtVND(roomData.defaultRent) : "",
-    trashUnit: roomData?.defaultTrash
-      ? fmtVND(roomData.defaultTrash)
-      : "15.000",
-    elecOld: "",
-    elecNew: "",
-    elecUnit: "3.200",
-    waterOld: "",
-    waterNew: "",
-    waterUnit: "12.000",
-    paid: "",
-  });
-
-  const [saveMessage, setSaveMessage] = useState("");
-  const [lastSavedSnapshot, setLastSavedSnapshot] = useState(null);
-
-  const lastHydratedKeyRef = useRef("");
-  const roomDataRef = useRef(roomData);
-  const currentDateRef = useRef(meta.date);
-  const hasHydratedRef = useRef(false);
-
-  useEffect(() => {
-    roomDataRef.current = roomData;
-  }, [roomData]);
-
-  useEffect(() => {
-    currentDateRef.current = meta.date;
-  }, [meta.date]);
-
-  const getFreshRoomData = useCallback(() => {
-    try {
-      const latestData = loadData();
-      const block = latestData.blocks?.find((item) => item.id === blockId);
-      const room = block?.rooms?.find((item) => item.id === roomId);
-
-      return room || roomDataRef.current || null;
-    } catch {
-      return roomDataRef.current || null;
-    }
-  }, [blockId, roomId]);
+  const [lastSavedSnapshot, setLastSavedSnapshot] = useState(() =>
+    JSON.stringify({
+      meta: initialState.meta,
+      f: initialState.f,
+      year: splitISO(initialState.meta.date).y,
+      month: splitISO(initialState.meta.date).m,
+      roomId,
+      blockId,
+    })
+  );
 
   const calc = useMemo(() => {
     const rent = parseMoney(f.rentAmount);
@@ -435,6 +437,30 @@ export default function Invoice({
       blockId,
     });
   }, [meta, f, year, month, roomId, blockId]);
+
+  const isDirty =
+    lastSavedSnapshot !== null && buildSnapshot() !== lastSavedSnapshot;
+
+  useEffect(() => {
+    if (typeof onDirtyChange === "function") {
+      onDirtyChange(isDirty);
+    }
+  }, [isDirty, onDirtyChange]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (!isDirty) return;
+
+      e.preventDefault();
+      e.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [isDirty]);
 
   const setMetaField = (field) => (e) => {
     const value = e.target.value;
@@ -500,150 +526,13 @@ export default function Invoice({
     setRoomText(next);
   };
 
-  useEffect(() => {
-    if (!blockId || !roomId || !year || !month) return;
-
-    const currentRoomData = getFreshRoomData();
-    if (!currentRoomData) return;
-
-    const yearNumber = Number(year);
-    const monthNumber = Number(month);
-
-    if (!yearNumber || !monthNumber) return;
-
-    const currentInvoice = getInvoiceByPeriod(
-      currentRoomData,
-      yearNumber,
-      monthNumber
-    );
-
-    const prevInvoice = getPreviousInvoice(
-      currentRoomData,
-      yearNumber,
-      monthNumber
-    );
-
-    const draft = loadInvoiceDraft(blockId, roomId, yearNumber, monthNumber);
-
-    const hydrateKey = [
-      roomId,
-      yearNumber,
-      monthNumber,
-      currentInvoice?.updatedAt || "new",
-      draft?.updatedAt || "no-draft",
-      currentRoomData.roomName || "",
-      currentRoomData.tenantName || "",
-      currentRoomData.defaultRent || 0,
-      currentRoomData.defaultTrash || 15000,
-    ].join(":");
-
-    if (lastHydratedKeyRef.current === hydrateKey) return;
-    lastHydratedKeyRef.current = hydrateKey;
-
-    const savedMeta = {
-      room: currentInvoice?.roomName || currentRoomData.roomName || "",
-      tenant: currentInvoice?.tenantName || currentRoomData.tenantName || "",
-      date: currentInvoice?.date || currentDateRef.current,
-    };
-
-    const savedF = currentInvoice
-      ? {
-          rentAmount:
-            currentInvoice.rentAmount ??
-            fmtVND(currentRoomData.defaultRent || 0),
-          trashUnit:
-            currentInvoice.trashUnit ??
-            fmtVND(currentRoomData.defaultTrash || 15000),
-          elecOld: digits(currentInvoice.elecOld),
-          elecNew: digits(currentInvoice.elecNew),
-          elecUnit: currentInvoice.elecUnit ?? "3.200",
-          waterOld: digits(currentInvoice.waterOld),
-          waterNew: digits(currentInvoice.waterNew),
-          waterUnit: currentInvoice.waterUnit ?? "12.000",
-          paid: currentInvoice.paid ?? "",
-        }
-      : {
-          rentAmount: fmtVND(currentRoomData.defaultRent || 0),
-          trashUnit: fmtVND(currentRoomData.defaultTrash || 15000),
-          elecOld: prevInvoice?.elecNew ? digits(prevInvoice.elecNew) : "",
-          elecNew: "",
-          elecUnit: prevInvoice?.elecUnit ?? "3.200",
-          waterOld: prevInvoice?.waterNew ? digits(prevInvoice.waterNew) : "",
-          waterNew: "",
-          waterUnit: prevInvoice?.waterUnit ?? "12.000",
-          paid: "",
-        };
-
-    const savedSnapshot = JSON.stringify({
-      meta: savedMeta,
-      f: savedF,
-      year,
-      month,
-      roomId,
-      blockId,
-    });
-
-    const hasDraft = draft?.meta && draft?.f;
-
-    const nextMeta = hasDraft ? draft.meta : savedMeta;
-    const nextF = hasDraft ? draft.f : savedF;
-
-    const timer = window.setTimeout(() => {
-      setMeta((prev) => ({
-        ...prev,
-        room: nextMeta.room || prev.room,
-        tenant: nextMeta.tenant || prev.tenant,
-        date: nextMeta.date || prev.date,
-      }));
-
-      const { y, m } = splitISO(nextMeta.date || currentDateRef.current);
-
-      if (m) setMonthText(m);
-      if (y) setYearText(y);
-
-      setRoomText(nextMeta.room || currentRoomData.roomName || "");
-      setF(nextF);
-      setLastSavedSnapshot(savedSnapshot);
-      hasHydratedRef.current = true;
-    }, 0);
-
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, [blockId, roomId, getFreshRoomData, year, month]);
-
-  useEffect(() => {
-    if (!hasHydratedRef.current) return;
-    if (!blockId || !roomId || !year || !month) return;
-    if (!lastSavedSnapshot) return;
-
-    const currentSnapshot = buildSnapshot();
-
-    if (currentSnapshot === lastSavedSnapshot) {
-      clearInvoiceDraft(blockId, roomId, year, month);
-      return;
-    }
-
-    saveInvoiceDraft(blockId, roomId, year, month, {
-      meta,
-      f,
-      year: Number(year),
-      month: Number(month),
-    });
-  }, [blockId, roomId, year, month, meta, f, lastSavedSnapshot, buildSnapshot]);
-
   const applyPrevOld = () => {
     if (!year || !month) return;
 
-    const currentRoomData = getFreshRoomData();
-    if (!currentRoomData) return;
+    const freshRoom = findFreshRoom(blockId, roomId, roomData);
+    if (!freshRoom) return;
 
-    const prev = getPreviousInvoice(
-      currentRoomData,
-      Number(year),
-      Number(month)
-    );
-
+    const prev = getPreviousInvoice(freshRoom, Number(year), Number(month));
     if (!prev) return;
 
     setF((s) => ({
@@ -654,17 +543,17 @@ export default function Invoice({
   };
 
   const resetNumbers = () => {
-    const currentRoomData = getFreshRoomData();
+    const freshRoom = findFreshRoom(blockId, roomId, roomData);
 
     setF((s) => ({
       ...s,
-      rentAmount: fmtVND(currentRoomData?.defaultRent || 0),
+      rentAmount: fmtVND(freshRoom?.defaultRent || 0),
       elecOld: "",
       elecNew: "",
       waterOld: "",
       waterNew: "",
       paid: "",
-      trashUnit: fmtVND(currentRoomData?.defaultTrash || 15000),
+      trashUnit: fmtVND(freshRoom?.defaultTrash || 15000),
       elecUnit: "3.200",
       waterUnit: "12.000",
     }));
@@ -673,31 +562,6 @@ export default function Invoice({
   const doPrint = () => {
     window.print();
   };
-
-  const currentSnapshot = buildSnapshot();
-  const isDirty =
-    lastSavedSnapshot !== null && currentSnapshot !== lastSavedSnapshot;
-
-  useEffect(() => {
-    if (typeof onDirtyChange === "function") {
-      onDirtyChange(isDirty);
-    }
-  }, [isDirty, onDirtyChange]);
-
-  useEffect(() => {
-    const handleBeforeUnload = (e) => {
-      if (!isDirty) return;
-
-      e.preventDefault();
-      e.returnValue = "";
-    };
-
-    window.addEventListener("beforeunload", handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, [isDirty]);
 
   const handleSave = useCallback(async () => {
     if (!blockId || !roomId || !year || !month) return false;
@@ -720,16 +584,51 @@ export default function Invoice({
       updatedAt: Date.now(),
     };
 
-    upsertInvoiceForRoom(blockId, roomId, invoicePayload);
+    const latestData = loadData();
 
-    updateRoomInfo(blockId, roomId, {
-      roomName: meta.room,
-      tenantName: meta.tenant,
-      defaultRent: parseMoney(f.rentAmount),
-      defaultTrash: parseMoney(f.trashUnit),
-    });
+    const nextData = {
+      ...latestData,
+      blocks: latestData.blocks.map((block) => {
+        if (block.id !== blockId) return block;
 
-    clearInvoiceDraft(blockId, roomId, year, month);
+        return {
+          ...block,
+          rooms: block.rooms.map((room) => {
+            if (room.id !== roomId) return room;
+
+            const invoices = Array.isArray(room.invoices)
+              ? [...room.invoices]
+              : [];
+
+            const existingIndex = invoices.findIndex(
+              (invoice) =>
+                Number(invoice.year) === Number(year) &&
+                Number(invoice.month) === Number(month)
+            );
+
+            if (existingIndex >= 0) {
+              invoices[existingIndex] = {
+                ...invoices[existingIndex],
+                ...invoicePayload,
+              };
+            } else {
+              invoices.push(invoicePayload);
+            }
+
+            return {
+              ...room,
+              roomName: meta.room,
+              tenantName: meta.tenant,
+              defaultRent: parseMoney(f.rentAmount),
+              defaultTrash: parseMoney(f.trashUnit),
+              invoices,
+            };
+          }),
+        };
+      }),
+    };
+
+    saveData(nextData);
 
     const snapshotAfterSave = JSON.stringify({
       meta,

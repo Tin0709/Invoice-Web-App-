@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import "../styles/home.css";
 import "../styles/invoice.css";
 import {
@@ -60,6 +60,8 @@ function getRoomCardMoney(room, latestInvoice) {
 }
 
 export default function HomePage() {
+  const location = useLocation();
+
   const [data, setData] = useState(() => loadData());
   const [newBlockName, setNewBlockName] = useState("");
   const [expandedBlockId, setExpandedBlockId] = useState(() => {
@@ -81,8 +83,19 @@ export default function HomePage() {
   });
 
   useEffect(() => {
-    saveData(data);
-  }, [data]);
+    setData(loadData());
+  }, [location.key]);
+
+  const commitData = (updater) => {
+    const latestData = loadData();
+    const nextData =
+      typeof updater === "function" ? updater(latestData) : updater;
+
+    saveData(nextData);
+    setData(nextData);
+
+    return nextData;
+  };
 
   const showRoomToast = (message) => {
     setRoomToast(message);
@@ -134,7 +147,7 @@ export default function HomePage() {
       rooms: [],
     };
 
-    setData((prev) => ({
+    commitData((prev) => ({
       ...prev,
       blocks: [...prev.blocks, newBlock],
     }));
@@ -156,18 +169,14 @@ export default function HomePage() {
         block?.name || ""
       }" không? Toàn bộ phòng và dữ liệu phiếu trong dãy này sẽ bị xoá.`,
       onConfirm: () => {
-        const remainingBlocks = data.blocks.filter(
-          (block) => block.id !== blockId
-        );
-
-        setData((prev) => ({
+        const nextData = commitData((prev) => ({
           ...prev,
-          blocks: remainingBlocks,
+          blocks: prev.blocks.filter((block) => block.id !== blockId),
         }));
 
         if (expandedBlockId === blockId) {
           setExpandedBlockId(
-            remainingBlocks.length > 0 ? remainingBlocks[0].id : null
+            nextData.blocks.length > 0 ? nextData.blocks[0].id : null
           );
         }
 
@@ -185,7 +194,7 @@ export default function HomePage() {
 
     if (!newName || !newName.trim()) return;
 
-    setData((prev) => ({
+    commitData((prev) => ({
       ...prev,
       blocks: prev.blocks.map((block) =>
         block.id === blockId ? { ...block, name: newName.trim() } : block
@@ -231,7 +240,7 @@ export default function HomePage() {
       invoices: [],
     };
 
-    setData((prev) => ({
+    commitData((prev) => ({
       ...prev,
       blocks: prev.blocks.map((block) =>
         block.id === blockId
@@ -264,7 +273,7 @@ export default function HomePage() {
         room?.roomName || ""
       }" không? Dữ liệu phiếu của phòng này cũng sẽ bị xoá.`,
       onConfirm: () => {
-        setData((prev) => ({
+        commitData((prev) => ({
           ...prev,
           blocks: prev.blocks.map((block) =>
             block.id === blockId
@@ -290,15 +299,18 @@ export default function HomePage() {
       .map((block) => ({
         ...block,
         rooms: block.rooms.filter((room) => {
-          const roomName = room.roomName.toLowerCase();
-          const tenantName = room.tenantName.toLowerCase();
+          const roomName = String(room.roomName || "").toLowerCase();
+          const tenantName = String(room.tenantName || "").toLowerCase();
 
           return roomName.includes(keyword) || tenantName.includes(keyword);
         }),
       }))
       .filter(
         (block) =>
-          block.rooms.length > 0 || block.name.toLowerCase().includes(keyword)
+          block.rooms.length > 0 ||
+          String(block.name || "")
+            .toLowerCase()
+            .includes(keyword)
       );
   }, [data.blocks, search]);
 

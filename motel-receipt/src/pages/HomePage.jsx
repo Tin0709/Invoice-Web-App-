@@ -6,7 +6,6 @@ import {
   createId,
   formatCurrency,
   getAllInvoicesFlat,
-  getInvoiceDebt,
   getLatestInvoice,
   loadData,
   saveData,
@@ -20,6 +19,44 @@ function formatMoneyInput(value) {
 
 function parseMoneyInput(value) {
   return Number(String(value ?? "").replace(/[^\d]/g, "")) || 0;
+}
+
+function clampNonNegative(number) {
+  return number < 0 ? 0 : number;
+}
+
+function getRoomCardMoney(room, latestInvoice) {
+  const rentAmount = latestInvoice
+    ? parseMoneyInput(latestInvoice.rentAmount ?? room.defaultRent)
+    : Number(room.defaultRent || 0);
+
+  const trashAmount = latestInvoice
+    ? parseMoneyInput(latestInvoice.trashUnit ?? room.defaultTrash ?? 15000)
+    : Number(room.defaultTrash || 15000);
+
+  const elecOld = parseMoneyInput(latestInvoice?.elecOld || 0);
+  const elecNew = parseMoneyInput(latestInvoice?.elecNew || 0);
+  const elecUnit = parseMoneyInput(latestInvoice?.elecUnit || 3200);
+  const elecUsed = clampNonNegative(elecNew - elecOld);
+  const elecAmount = elecUsed * elecUnit;
+
+  const waterOld = parseMoneyInput(latestInvoice?.waterOld || 0);
+  const waterNew = parseMoneyInput(latestInvoice?.waterNew || 0);
+  const waterUnit = parseMoneyInput(latestInvoice?.waterUnit || 12000);
+  const waterUsed = clampNonNegative(waterNew - waterOld);
+  const waterAmount = waterUsed * waterUnit;
+
+  const paid = parseMoneyInput(latestInvoice?.paid || 0);
+
+  const otherAmount = trashAmount + elecAmount + waterAmount;
+  const totalAmount = rentAmount + otherAmount;
+  const debtAmount = clampNonNegative(totalAmount - paid);
+
+  return {
+    rentAmount,
+    otherAmount,
+    debtAmount,
+  };
 }
 
 export default function HomePage() {
@@ -364,7 +401,10 @@ export default function HomePage() {
                         <div className="room-grid">
                           {block.rooms.map((room) => {
                             const latestInvoice = getLatestInvoice(room);
-                            const latestDebt = getInvoiceDebt(latestInvoice);
+                            const roomMoney = getRoomCardMoney(
+                              room,
+                              latestInvoice
+                            );
 
                             return (
                               <div className="room-card" key={room.id}>
@@ -378,18 +418,23 @@ export default function HomePage() {
                                   <div className="room-meta">
                                     <span>
                                       Tiền phòng:{" "}
-                                      {formatCurrency(room.defaultRent)} đ
+                                      {formatCurrency(roomMoney.rentAmount)} đ
+                                    </span>
+
+                                    <span>
+                                      Tiền khác:{" "}
+                                      {formatCurrency(roomMoney.otherAmount)} đ
                                     </span>
 
                                     <span
                                       className={
-                                        latestDebt > 0
+                                        roomMoney.debtAmount > 0
                                           ? "room-debt debt"
                                           : "room-debt ok"
                                       }
                                     >
                                       Tiền còn thiếu:{" "}
-                                      {formatCurrency(latestDebt)} đ
+                                      {formatCurrency(roomMoney.debtAmount)} đ
                                     </span>
                                   </div>
                                 </Link>

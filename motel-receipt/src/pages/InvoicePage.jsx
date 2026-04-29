@@ -64,24 +64,16 @@ export default function InvoicePage() {
   return (
     <>
       <div className="page">
-        <div style={{ marginBottom: "16px" }}>
+        <div className="invoice-page-top no-print">
           <button
             type="button"
             onClick={requestGoHome}
-            style={{
-              textDecoration: "none",
-              fontWeight: 700,
-              background: "transparent",
-              border: "none",
-              padding: 0,
-              cursor: "pointer",
-              color: "#5b21b6",
-            }}
+            className="invoice-back-btn"
           >
             ← Quay về trang chủ
           </button>
 
-          <div style={{ marginTop: "8px", color: "#6b7280", fontSize: "15px" }}>
+          <div className="invoice-room-label">
             {block.name} - {room.roomName} - {room.tenantName}
           </div>
         </div>
@@ -96,7 +88,7 @@ export default function InvoicePage() {
       </div>
 
       {showLeaveModal && (
-        <div className="confirm-overlay" onClick={handleStay}>
+        <div className="confirm-overlay no-print" onClick={handleStay}>
           <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
             <div className="confirm-badge">Chưa lưu</div>
             <h3>Bạn có thay đổi chưa được lưu</h3>

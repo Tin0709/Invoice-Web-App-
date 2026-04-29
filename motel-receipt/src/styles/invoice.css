@@ -847,3 +847,28 @@
     margin-top: 0 !important;
   }
 }
+.invoice-page-top {
+  margin-bottom: 16px;
+}
+
+.invoice-back-btn {
+  text-decoration: none;
+  font-weight: 700;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: #5b21b6;
+}
+
+.invoice-room-label {
+  margin-top: 8px;
+  color: #6b7280;
+  font-size: 15px;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

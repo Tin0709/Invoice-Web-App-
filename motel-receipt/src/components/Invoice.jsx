@@ -481,16 +481,6 @@ export default function Invoice({
 
     isHydratingRef.current = true;
 
-    setMeta((prev) => ({
-      ...prev,
-      room: hydratedMeta.room || prev.room,
-      tenant: hydratedMeta.tenant || prev.tenant,
-    }));
-
-    setRoomText(roomData.roomName || "");
-
-    setF(hydratedF);
-
     const nextSnapshot = JSON.stringify({
       meta: hydratedMeta,
       f: hydratedF,
@@ -500,13 +490,26 @@ export default function Invoice({
       blockId,
     });
 
-    setLastSavedSnapshot(nextSnapshot);
+    const timer = window.setTimeout(() => {
+      setMeta((prev) => ({
+        ...prev,
+        room: hydratedMeta.room || prev.room,
+        tenant: hydratedMeta.tenant || prev.tenant,
+      }));
 
-    const timer = setTimeout(() => {
+      setRoomText(roomData.roomName || "");
+
+      setF(hydratedF);
+
+      setLastSavedSnapshot(nextSnapshot);
+
       isHydratingRef.current = false;
     }, 0);
 
-    return () => clearTimeout(timer);
+    return () => {
+      window.clearTimeout(timer);
+      isHydratingRef.current = false;
+    };
   }, [blockId, roomId, roomData, year, month, meta.date]);
 
   const applyPrevOld = () => {

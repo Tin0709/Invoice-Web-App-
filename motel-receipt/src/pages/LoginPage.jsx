@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { saveAuthUser } from "../utils/auth";
+import { supabase } from "../utils/supabase";
 import "../styles/login.css";
 
 export default function LoginPage() {
@@ -13,8 +14,54 @@ export default function LoginPage() {
     confirmPassword: "",
   });
   const [error, setError] = useState("");
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const isLogin = mode === "login";
+
+  useEffect(() => {
+    const checkSupabaseSession = async () => {
+      const { data, error } = await supabase.auth.getSession();
+
+      if (error) return;
+
+      const session = data?.session;
+      const user = session?.user;
+
+      if (!user) return;
+
+      saveAuthUser({
+        id: user.id,
+        email: user.email,
+        provider: "google",
+        loggedInAt: Date.now(),
+      });
+
+      navigate("/", { replace: true });
+    };
+
+    checkSupabaseSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      const user = session?.user;
+
+      if (!user) return;
+
+      saveAuthUser({
+        id: user.id,
+        email: user.email,
+        provider: "google",
+        loggedInAt: Date.now(),
+      });
+
+      navigate("/", { replace: true });
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [navigate]);
 
   const updateField = (field, value) => {
     setForm((prev) => ({
@@ -23,6 +70,27 @@ export default function LoginPage() {
     }));
 
     setError("");
+  };
+
+  const handleGoogleLogin = async () => {
+    setError("");
+    setIsGoogleLoading(true);
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        queryParams: {
+          access_type: "offline",
+          prompt: "select_account",
+        },
+      },
+    });
+
+    if (error) {
+      setError(error.message);
+      setIsGoogleLoading(false);
+    }
   };
 
   const handleSubmit = (event) => {
@@ -54,6 +122,7 @@ export default function LoginPage() {
 
     const fakeUser = {
       email,
+      provider: "local-demo",
       loggedInAt: Date.now(),
     };
 
@@ -102,6 +171,22 @@ export default function LoginPage() {
                 ? "Nhập thông tin để vào trang quản lý."
                 : "Tạo tài khoản mới để sử dụng hệ thống."}
             </p>
+          </div>
+
+          <button
+            type="button"
+            className="login-google-btn"
+            onClick={handleGoogleLogin}
+            disabled={isGoogleLoading}
+          >
+            <span className="google-icon">G</span>
+            {isGoogleLoading ? "Đang mở Google..." : "Tiếp tục với Google"}
+          </button>
+
+          <div className="login-divider">
+            <span></span>
+            <p>hoặc</p>
+            <span></span>
           </div>
 
           <form className="login-form" onSubmit={handleSubmit}>
@@ -164,8 +249,8 @@ export default function LoginPage() {
           </div>
 
           <p className="login-note">
-            Hiện tại đây là đăng nhập tạm thời để test giao diện. Bước sau mình
-            sẽ nối Supabase để đăng nhập thật.
+            Nút Google đang dùng Supabase Auth. Phần email/mật khẩu bên dưới
+            hiện vẫn là đăng nhập tạm thời để test giao diện.
           </p>
         </section>
       </div>

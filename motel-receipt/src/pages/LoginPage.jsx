@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { saveAuthUser } from "../utils/auth";
 import "../styles/login.css";
 
 export default function LoginPage() {
@@ -56,7 +57,7 @@ export default function LoginPage() {
       loggedInAt: Date.now(),
     };
 
-    localStorage.setItem("motel_receipt_auth", JSON.stringify(fakeUser));
+    saveAuthUser(fakeUser);
 
     navigate("/");
   };

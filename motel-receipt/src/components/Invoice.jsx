@@ -645,7 +645,12 @@ export default function Invoice({
       waterUnit: "12.000",
     }));
   };
-
+  const payFull = () => {
+    setF((s) => ({
+      ...s,
+      paid: fmtVND(calc.total),
+    }));
+  };
   const doPrint = () => {
     window.print();
   };
@@ -857,6 +862,11 @@ export default function Invoice({
           <div className="summary summary-only-totals">
             <div className="totals">
               <div className="row">
+                <div className="k">THÁNG NÀY:</div>
+                <div className="v">{fmtVND(calc.currentMonthTotal)}</div>
+              </div>
+
+              <div className="row">
                 <div className="k">THIẾU THÁNG TRƯỚC:</div>
                 <div className="v-input">
                   <input
@@ -876,7 +886,7 @@ export default function Invoice({
 
               <div className="row">
                 <div className="k">ĐÃ TRẢ:</div>
-                <div className="v-input">
+                <div className="v-input paid-input-wrap">
                   <input
                     className="cell-input money"
                     value={f.paid}
@@ -884,6 +894,14 @@ export default function Invoice({
                     inputMode="numeric"
                     placeholder="0"
                   />
+
+                  <button
+                    className="pay-full-btn no-print"
+                    type="button"
+                    onClick={payFull}
+                  >
+                    Trả đủ
+                  </button>
                 </div>
               </div>
 
@@ -895,7 +913,6 @@ export default function Invoice({
               </div>
             </div>
           </div>
-
           <footer className="invoice-footer no-print">
             <div>Dữ liệu chỉ vào lịch sử sau khi bấm Lưu.</div>
             <div>

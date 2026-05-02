@@ -9,11 +9,53 @@ import {
   loadData,
 } from "../utils/storage";
 
+const DEFAULT_FILTERS = {
+  search: "",
+  month: "all",
+  year: "all",
+  blockId: "all",
+  status: "all",
+};
+
+function normalizeText(value) {
+  return String(value ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function parseMoneyValue(value) {
+  return Number(String(value ?? "").replace(/[^\d]/g, "")) || 0;
+}
+
+function getDebtValue(item) {
+  return parseMoneyValue(
+    item?.debt ??
+      item?.remaining ??
+      item?.remainingAmount ??
+      item?.debtAmount ??
+      0
+  );
+}
+
 function groupInvoicesByMonth(invoices) {
+  const sortedInvoices = [...invoices].sort((a, b) => {
+    const yearDiff = Number(b.year) - Number(a.year);
+    if (yearDiff !== 0) return yearDiff;
+
+    const monthDiff = Number(b.month) - Number(a.month);
+    if (monthDiff !== 0) return monthDiff;
+
+    return String(a.roomName || "").localeCompare(
+      String(b.roomName || ""),
+      "vi"
+    );
+  });
+
   const map = new Map();
 
-  invoices.forEach((item) => {
-    const key = `${item.month}/${item.year}`;
+  sortedInvoices.forEach((item) => {
+    const key = `${Number(item.month)}/${Number(item.year)}`;
 
     if (!map.has(key)) {
       map.set(key, {
@@ -32,6 +74,8 @@ function groupInvoicesByMonth(invoices) {
 
 export default function HistoryPage() {
   const [data, setData] = useState(() => loadData());
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+
   const [confirmState, setConfirmState] = useState({
     open: false,
     title: "",
@@ -40,7 +84,96 @@ export default function HistoryPage() {
   });
 
   const invoices = useMemo(() => getAllInvoicesFlat(data), [data]);
-  const grouped = useMemo(() => groupInvoicesByMonth(invoices), [invoices]);
+
+  const yearOptions = useMemo(() => {
+    const years = new Set();
+
+    invoices.forEach((item) => {
+      if (item.year) years.add(Number(item.year));
+    });
+
+    return Array.from(years).sort((a, b) => b - a);
+  }, [invoices]);
+
+  const blockOptions = useMemo(() => {
+    const map = new Map();
+
+    data.blocks?.forEach((block) => {
+      map.set(block.id, block.name);
+    });
+
+    invoices.forEach((item) => {
+      if (item.blockId && item.blockName) {
+        map.set(item.blockId, item.blockName);
+      }
+    });
+
+    return Array.from(map.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => String(a.name).localeCompare(String(b.name), "vi"));
+  }, [data.blocks, invoices]);
+
+  const filteredInvoices = useMemo(() => {
+    const keyword = normalizeText(filters.search.trim());
+
+    return invoices.filter((item) => {
+      const haystack = normalizeText(
+        [
+          item.roomName,
+          item.tenantName,
+          item.blockName,
+          `${item.month}/${item.year}`,
+        ]
+          .filter(Boolean)
+          .join(" ")
+      );
+
+      const matchSearch = !keyword || haystack.includes(keyword);
+
+      const matchMonth =
+        filters.month === "all" || Number(item.month) === Number(filters.month);
+
+      const matchYear =
+        filters.year === "all" || Number(item.year) === Number(filters.year);
+
+      const matchBlock =
+        filters.blockId === "all" || item.blockId === filters.blockId;
+
+      const debt = getDebtValue(item);
+
+      const matchStatus =
+        filters.status === "all" ||
+        (filters.status === "debt" && debt > 0) ||
+        (filters.status === "paid" && debt === 0);
+
+      return (
+        matchSearch && matchMonth && matchYear && matchBlock && matchStatus
+      );
+    });
+  }, [invoices, filters]);
+
+  const grouped = useMemo(
+    () => groupInvoicesByMonth(filteredInvoices),
+    [filteredInvoices]
+  );
+
+  const hasActiveFilters =
+    filters.search.trim() ||
+    filters.month !== "all" ||
+    filters.year !== "all" ||
+    filters.blockId !== "all" ||
+    filters.status !== "all";
+
+  const updateFilter = (field, value) => {
+    setFilters((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const resetFilters = () => {
+    setFilters(DEFAULT_FILTERS);
+  };
 
   const openConfirm = ({ title, message, onConfirm }) => {
     setConfirmState({
@@ -114,10 +247,116 @@ export default function HistoryPage() {
             </div>
           </div>
 
-          {grouped.length === 0 ? (
+          {invoices.length > 0 && (
+            <section className="history-filter-card">
+              <div className="history-filter-head">
+                <div>
+                  <h2>Bộ lọc lịch sử</h2>
+
+                  <p>
+                    Đang hiển thị {filteredInvoices.length}/{invoices.length}{" "}
+                    phiếu.
+                  </p>
+                </div>
+
+                {hasActiveFilters && (
+                  <button
+                    type="button"
+                    className="history-clear-filter-btn"
+                    onClick={resetFilters}
+                  >
+                    Xoá bộ lọc
+                  </button>
+                )}
+              </div>
+
+              <div className="history-filter-grid">
+                <div className="history-filter-field history-search-field">
+                  <label>Tìm kiếm</label>
+
+                  <input
+                    type="text"
+                    placeholder="Tìm phòng, người thuê, dãy..."
+                    value={filters.search}
+                    onChange={(e) => updateFilter("search", e.target.value)}
+                  />
+                </div>
+
+                <div className="history-filter-field">
+                  <label>Tháng</label>
+
+                  <select
+                    value={filters.month}
+                    onChange={(e) => updateFilter("month", e.target.value)}
+                  >
+                    <option value="all">Tất cả</option>
+                    {Array.from({ length: 12 }, (_, index) => index + 1).map(
+                      (month) => (
+                        <option key={month} value={month}>
+                          Tháng {month}
+                        </option>
+                      )
+                    )}
+                  </select>
+                </div>
+
+                <div className="history-filter-field">
+                  <label>Năm</label>
+
+                  <select
+                    value={filters.year}
+                    onChange={(e) => updateFilter("year", e.target.value)}
+                  >
+                    <option value="all">Tất cả</option>
+                    {yearOptions.map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="history-filter-field">
+                  <label>Dãy</label>
+
+                  <select
+                    value={filters.blockId}
+                    onChange={(e) => updateFilter("blockId", e.target.value)}
+                  >
+                    <option value="all">Tất cả</option>
+                    {blockOptions.map((block) => (
+                      <option key={block.id} value={block.id}>
+                        {block.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="history-filter-field">
+                  <label>Trạng thái</label>
+
+                  <select
+                    value={filters.status}
+                    onChange={(e) => updateFilter("status", e.target.value)}
+                  >
+                    <option value="all">Tất cả</option>
+                    <option value="debt">Còn thiếu</option>
+                    <option value="paid">Đã trả đủ</option>
+                  </select>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {invoices.length === 0 ? (
             <div className="history-empty-card">
               <h3>Chưa có lịch sử nào</h3>
               <p>Khi bạn lưu invoice, lịch sử sẽ xuất hiện ở đây.</p>
+            </div>
+          ) : grouped.length === 0 ? (
+            <div className="history-empty-card">
+              <h3>Không tìm thấy phiếu phù hợp</h3>
+              <p>Thử xoá bộ lọc hoặc nhập từ khoá khác.</p>
             </div>
           ) : (
             <div className="timeline-groups">
@@ -142,39 +381,49 @@ export default function HistoryPage() {
                   </div>
 
                   <div className="timeline-list">
-                    {group.items.map((item, index) => (
-                      <div
-                        className="timeline-item"
-                        key={`${group.key}-${item.roomId}-${index}`}
-                      >
-                        <Link
-                          className="timeline-main"
-                          to={`/invoice/${item.blockId}/${item.roomId}?year=${item.year}&month=${item.month}`}
+                    {group.items.map((item, index) => {
+                      const debt = getDebtValue(item);
+
+                      return (
+                        <div
+                          className="timeline-item"
+                          key={`${group.key}-${item.roomId}-${index}`}
                         >
-                          <div className="timeline-left">
-                            <strong>{item.roomName}</strong>
+                          <Link
+                            className="timeline-main"
+                            to={`/invoice/${item.blockId}/${item.roomId}?year=${item.year}&month=${item.month}`}
+                          >
+                            <div className="timeline-left">
+                              <strong>{item.roomName}</strong>
 
-                            <span>
-                              {item.blockName} - {item.tenantName}
-                            </span>
-                          </div>
+                              <span>
+                                {item.blockName} - {item.tenantName}
+                              </span>
+                            </div>
 
-                          <div className="timeline-right">
-                            <span className="history-debt">
-                              Còn thiếu: {formatCurrency(item.debt)} đ
-                            </span>
-                          </div>
-                        </Link>
+                            <div className="timeline-right">
+                              <span
+                                className={
+                                  debt > 0
+                                    ? "history-debt"
+                                    : "history-debt history-paid"
+                                }
+                              >
+                                Còn thiếu: {formatCurrency(debt)} đ
+                              </span>
+                            </div>
+                          </Link>
 
-                        <button
-                          type="button"
-                          className="danger-btn small-btn"
-                          onClick={() => handleDeleteOne(item)}
-                        >
-                          Xoá
-                        </button>
-                      </div>
-                    ))}
+                          <button
+                            type="button"
+                            className="danger-btn small-btn"
+                            onClick={() => handleDeleteOne(item)}
+                          >
+                            Xoá
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 </section>
               ))}

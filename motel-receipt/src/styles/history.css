@@ -147,3 +147,220 @@
     text-align: left;
   }
 }
+/* =========================
+   HISTORY FILTERS
+========================= */
+
+.history-filter-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 24px;
+  padding: 20px;
+  margin-bottom: 22px;
+  box-sizing: border-box;
+}
+
+.history-filter-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.history-filter-head h2 {
+  margin: 0 0 6px;
+  color: #111827;
+  font-size: 22px;
+}
+
+.history-filter-head p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.history-clear-filter-btn {
+  border: none;
+  background: #eef2ff;
+  color: #4338ca;
+  border-radius: 14px;
+  padding: 12px 16px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.history-clear-filter-btn:hover {
+  background: #e0e7ff;
+}
+
+.history-filter-grid {
+  display: grid;
+  grid-template-columns: 1.6fr repeat(4, minmax(130px, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.history-filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.history-filter-field label {
+  color: #374151;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.history-filter-field input,
+.history-filter-field select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #111827;
+  border-radius: 14px;
+  padding: 13px 14px;
+  font-size: 15px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.history-filter-field input:focus,
+.history-filter-field select:focus {
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.14);
+}
+
+.history-paid {
+  color: #15803d;
+}
+
+/* Optional: make buttons consistent if history.css does not already have them */
+
+.danger-btn {
+  border: none;
+  background: #fee2e2;
+  color: #b91c1c;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.danger-btn:hover {
+  background: #fecaca;
+}
+
+.small-btn {
+  padding: 11px 14px;
+}
+
+.ghost-btn {
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #111827;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Confirm modal, in case this page only imports history.css */
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: rgba(15, 23, 42, 0.48);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+.confirm-modal {
+  width: min(420px, 100%);
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.25);
+}
+
+.confirm-badge {
+  display: inline-flex;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4f46e5;
+  font-size: 12px;
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+
+.confirm-modal h3 {
+  margin: 0 0 8px;
+  color: #111827;
+}
+
+.confirm-modal p {
+  margin: 0;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+.confirm-danger {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.confirm-danger:hover {
+  background: #b91c1c;
+}
+
+@media (max-width: 900px) {
+  .history-filter-head {
+    flex-direction: column;
+  }
+
+  .history-clear-filter-btn {
+    width: 100%;
+  }
+
+  .history-filter-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .history-search-field {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 560px) {
+  .history-page {
+    padding: 16px;
+  }
+
+  .history-topbar h1 {
+    font-size: 30px;
+  }
+
+  .history-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .history-search-field {
+    grid-column: auto;
+  }
+}

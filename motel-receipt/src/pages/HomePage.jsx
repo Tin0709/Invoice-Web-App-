@@ -80,6 +80,11 @@ export default function HomePage() {
     value: "",
   });
 
+  const [blockMenuModal, setBlockMenuModal] = useState({
+    open: false,
+    block: null,
+  });
+
   const [confirmState, setConfirmState] = useState({
     open: false,
     type: "",
@@ -168,6 +173,20 @@ export default function HomePage() {
     });
   };
 
+  const openBlockMenuModal = (block) => {
+    setBlockMenuModal({
+      open: true,
+      block,
+    });
+  };
+
+  const closeBlockMenuModal = () => {
+    setBlockMenuModal({
+      open: false,
+      block: null,
+    });
+  };
+
   const handleRenameBlockSubmit = (event) => {
     event.preventDefault();
 
@@ -245,6 +264,24 @@ export default function HomePage() {
         showRoomToast("Đã xoá dãy.");
       },
     });
+  };
+
+  const handleMenuRenameBlock = () => {
+    if (!blockMenuModal.block) return;
+
+    const selectedBlock = blockMenuModal.block;
+
+    closeBlockMenuModal();
+    openRenameBlockModal(selectedBlock);
+  };
+
+  const handleMenuDeleteBlock = () => {
+    if (!blockMenuModal.block) return;
+
+    const selectedBlockId = blockMenuModal.block.id;
+
+    closeBlockMenuModal();
+    handleDeleteBlock(selectedBlockId);
   };
 
   const handleRoomInputChange = (blockId, field, value) => {
@@ -420,7 +457,12 @@ export default function HomePage() {
                 const isOpen = expandedBlockId === block.id;
 
                 return (
-                  <div className="block-card card" key={block.id}>
+                  <div
+                    className={`block-card card ${
+                      isOpen ? "active-block-card" : ""
+                    }`}
+                    key={block.id}
+                  >
                     <div className="block-header">
                       <button
                         type="button"
@@ -439,18 +481,11 @@ export default function HomePage() {
 
                         <button
                           type="button"
-                          className="ghost-btn"
-                          onClick={() => openRenameBlockModal(block)}
+                          className="block-menu-btn"
+                          onClick={() => openBlockMenuModal(block)}
+                          aria-label={`Mở tuỳ chọn cho ${block.name}`}
                         >
-                          Đổi tên
-                        </button>
-
-                        <button
-                          type="button"
-                          className="danger-btn"
-                          onClick={() => handleDeleteBlock(block.id)}
-                        >
-                          Xoá dãy
+                          ⋯
                         </button>
                       </div>
                     </div>
@@ -719,6 +754,59 @@ export default function HomePage() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {blockMenuModal.open && blockMenuModal.block && (
+        <div className="add-room-modal-overlay" onClick={closeBlockMenuModal}>
+          <div
+            className="block-menu-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="block-menu-modal-header">
+              <div>
+                <div className="add-room-modal-badge">Tuỳ chọn dãy</div>
+
+                <h2>{blockMenuModal.block.name}</h2>
+              </div>
+
+              <button
+                type="button"
+                className="add-room-modal-x"
+                onClick={closeBlockMenuModal}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="block-menu-actions">
+              <button
+                type="button"
+                className="block-menu-action"
+                onClick={handleMenuRenameBlock}
+              >
+                <span>✏️</span>
+
+                <div>
+                  <strong>Đổi tên dãy</strong>
+                  <p>Chỉnh lại tên dãy này.</p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                className="block-menu-action danger"
+                onClick={handleMenuDeleteBlock}
+              >
+                <span>🗑️</span>
+
+                <div>
+                  <strong>Xoá dãy</strong>
+                  <p>Xoá dãy này cùng toàn bộ phòng bên trong.</p>
+                </div>
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

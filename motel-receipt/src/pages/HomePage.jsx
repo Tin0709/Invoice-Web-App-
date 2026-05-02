@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import AccountMenu from "../components/AccountMenu";
 import "../styles/home.css";
 import "../styles/invoice.css";
 import {
@@ -421,6 +422,8 @@ export default function HomePage() {
               <h1>Quản lý phòng trọ</h1>
               <p>Quản lý dãy, phòng và xem lại phiếu thu các tháng đã nhập.</p>
             </div>
+
+            <AccountMenu />
           </header>
 
           <section className="home-toolbar card">

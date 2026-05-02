@@ -768,3 +768,13 @@
   top: 0;
   right: 0;
 }
+.active-block-card {
+  border-color: #8b5cf6 !important;
+  box-shadow: 0 18px 45px rgba(79, 70, 229, 0.16) !important;
+  background: #ede9fe;
+}
+
+.active-block-card .block-header {
+  background: #e0e7ff;
+  border-bottom-color: #c7d2fe;
+}

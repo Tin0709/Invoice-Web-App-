@@ -74,6 +74,12 @@ export default function HomePage() {
   const [openAddRoomBlockId, setOpenAddRoomBlockId] = useState(null);
   const [roomToast, setRoomToast] = useState("");
 
+  const [renameBlockModal, setRenameBlockModal] = useState({
+    open: false,
+    blockId: null,
+    value: "",
+  });
+
   const [confirmState, setConfirmState] = useState({
     open: false,
     type: "",
@@ -146,6 +152,45 @@ export default function HomePage() {
     setOpenAddRoomBlockId(null);
   };
 
+  const openRenameBlockModal = (block) => {
+    setRenameBlockModal({
+      open: true,
+      blockId: block.id,
+      value: block.name || "",
+    });
+  };
+
+  const closeRenameBlockModal = () => {
+    setRenameBlockModal({
+      open: false,
+      blockId: null,
+      value: "",
+    });
+  };
+
+  const handleRenameBlockSubmit = (event) => {
+    event.preventDefault();
+
+    const newName = renameBlockModal.value.trim();
+
+    if (!newName) {
+      showRoomToast("Vui lòng nhập tên dãy.");
+      return;
+    }
+
+    commitData((prev) => ({
+      ...prev,
+      blocks: prev.blocks.map((block) =>
+        block.id === renameBlockModal.blockId
+          ? { ...block, name: newName }
+          : block
+      ),
+    }));
+
+    closeRenameBlockModal();
+    showRoomToast("✅ Đã đổi tên dãy.");
+  };
+
   const handleAddBlock = () => {
     const name = newBlockName.trim();
 
@@ -200,21 +245,6 @@ export default function HomePage() {
         showRoomToast("Đã xoá dãy.");
       },
     });
-  };
-
-  const handleRenameBlock = (blockId, oldName) => {
-    const newName = window.prompt("Nhập tên dãy mới:", oldName);
-
-    if (!newName || !newName.trim()) return;
-
-    commitData((prev) => ({
-      ...prev,
-      blocks: prev.blocks.map((block) =>
-        block.id === blockId ? { ...block, name: newName.trim() } : block
-      ),
-    }));
-
-    showRoomToast("✅ Đã đổi tên dãy.");
   };
 
   const handleRoomInputChange = (blockId, field, value) => {
@@ -410,9 +440,7 @@ export default function HomePage() {
                         <button
                           type="button"
                           className="ghost-btn"
-                          onClick={() =>
-                            handleRenameBlock(block.id, block.name)
-                          }
+                          onClick={() => openRenameBlockModal(block)}
                         >
                           Đổi tên
                         </button>
@@ -631,6 +659,61 @@ export default function HomePage() {
                 type="button"
                 className="add-room-modal-secondary"
                 onClick={closeAddRoomModal}
+              >
+                Đóng
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {renameBlockModal.open && (
+        <div className="add-room-modal-overlay" onClick={closeRenameBlockModal}>
+          <form
+            className="add-room-modal"
+            onSubmit={handleRenameBlockSubmit}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="add-room-modal-header">
+              <div>
+                <div className="add-room-modal-badge">Đổi tên dãy</div>
+
+                <h2>Nhập tên dãy mới</h2>
+              </div>
+
+              <button
+                type="button"
+                className="add-room-modal-x"
+                onClick={closeRenameBlockModal}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="add-room-modal-fields">
+              <input
+                type="text"
+                placeholder="Tên dãy mới"
+                value={renameBlockModal.value}
+                onChange={(e) =>
+                  setRenameBlockModal((prev) => ({
+                    ...prev,
+                    value: e.target.value,
+                  }))
+                }
+                autoFocus
+              />
+            </div>
+
+            <div className="add-room-modal-actions">
+              <button type="submit" className="add-room-modal-primary">
+                Lưu tên mới
+              </button>
+
+              <button
+                type="button"
+                className="add-room-modal-secondary"
+                onClick={closeRenameBlockModal}
               >
                 Đóng
               </button>

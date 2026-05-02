@@ -89,6 +89,52 @@ const findFreshRoom = (blockId, roomId, fallbackRoom) => {
   return room || fallbackRoom || null;
 };
 
+const getInvoiceBaseTotal = (invoice) => {
+  if (!invoice) return 0;
+
+  const rent = parseMoney(invoice.rentAmount);
+  const trashAmount = parseMoney(invoice.trashUnit);
+
+  const elecOld = parseMoney(invoice.elecOld);
+  const elecNew = parseMoney(invoice.elecNew);
+  const elecUnit = parseMoney(invoice.elecUnit);
+  const elecUsed = clampNonNegative(elecNew - elecOld);
+  const elecAmount = elecUsed * elecUnit;
+
+  const waterOld = parseMoney(invoice.waterOld);
+  const waterNew = parseMoney(invoice.waterNew);
+  const waterUnit = parseMoney(invoice.waterUnit);
+  const waterUsed = clampNonNegative(waterNew - waterOld);
+  const waterAmount = waterUsed * waterUnit;
+
+  return rent + trashAmount + elecAmount + waterAmount;
+};
+
+const getInvoiceDebt = (invoice) => {
+  if (!invoice) return 0;
+
+  const savedDebt =
+    invoice.debt ??
+    invoice.remaining ??
+    invoice.remainingAmount ??
+    invoice.debtAmount;
+
+  if (savedDebt !== undefined && savedDebt !== null && savedDebt !== "") {
+    return parseMoney(savedDebt);
+  }
+
+  const savedTotal = invoice.total ?? invoice.finalTotal ?? invoice.totalAmount;
+
+  const total =
+    savedTotal !== undefined && savedTotal !== null && savedTotal !== ""
+      ? parseMoney(savedTotal)
+      : getInvoiceBaseTotal(invoice) + parseMoney(invoice.previousDebt);
+
+  const paid = parseMoney(invoice.paid);
+
+  return clampNonNegative(total - paid);
+};
+
 const createInitialInvoiceState = ({
   blockId,
   roomId,
@@ -114,6 +160,10 @@ const createInitialInvoiceState = ({
   const prevInvoice = freshRoom
     ? getPreviousInvoice(freshRoom, Number(year), Number(month))
     : null;
+
+  const previousDebtFromLastMonth = prevInvoice
+    ? fmtVND(getInvoiceDebt(prevInvoice))
+    : "";
 
   const meta = {
     room:
@@ -141,6 +191,11 @@ const createInitialInvoiceState = ({
         waterOld: digits(currentInvoice.waterOld),
         waterNew: digits(currentInvoice.waterNew),
         waterUnit: currentInvoice.waterUnit ?? "12.000",
+        previousDebt:
+          currentInvoice.previousDebt !== undefined &&
+          currentInvoice.previousDebt !== null
+            ? fmtVND(parseMoney(currentInvoice.previousDebt))
+            : previousDebtFromLastMonth,
         paid: currentInvoice.paid ?? "",
       }
     : {
@@ -156,6 +211,7 @@ const createInitialInvoiceState = ({
         waterOld: prevInvoice?.waterNew ? digits(prevInvoice.waterNew) : "",
         waterNew: "",
         waterUnit: prevInvoice?.waterUnit ?? "12.000",
+        previousDebt: previousDebtFromLastMonth,
         paid: "",
       };
 
@@ -411,7 +467,10 @@ export default function Invoice({
     const waterUsed = clampNonNegative(waterNew - waterOld);
     const waterAmount = waterUsed * waterUnit;
 
-    const total = rent + trashAmount + elecAmount + waterAmount;
+    const currentMonthTotal = rent + trashAmount + elecAmount + waterAmount;
+    const previousDebt = parseMoney(f.previousDebt);
+
+    const total = currentMonthTotal + previousDebt;
     const paid = parseMoney(f.paid);
     const debt = clampNonNegative(total - paid);
 
@@ -422,6 +481,8 @@ export default function Invoice({
       elecAmount,
       waterUsed,
       waterAmount,
+      currentMonthTotal,
+      previousDebt,
       total,
       paid,
       debt,
@@ -487,6 +548,22 @@ export default function Invoice({
     setF((s) => ({ ...s, [field]: value }));
   };
 
+  const refreshPreviousDebt = (targetYear, targetMonth) => {
+    const freshRoom = findFreshRoom(blockId, roomId, roomData);
+    if (!freshRoom || !targetYear || !targetMonth) return;
+
+    const prev = getPreviousInvoice(
+      freshRoom,
+      Number(targetYear),
+      Number(targetMonth)
+    );
+
+    setF((s) => ({
+      ...s,
+      previousDebt: prev ? fmtVND(getInvoiceDebt(prev)) : "",
+    }));
+  };
+
   const commitMonth = () => {
     const raw = onlyDigits(monthText).slice(0, 2);
 
@@ -502,6 +579,7 @@ export default function Invoice({
 
     setMeta((s) => ({ ...s, date: toISODate(baseYear, mm, dd) }));
     setMonthText(mm);
+    refreshPreviousDebt(baseYear, mm);
   };
 
   const commitYear = () => {
@@ -519,6 +597,7 @@ export default function Invoice({
 
     setMeta((s) => ({ ...s, date: toISODate(yyyy, baseMonth, dd) }));
     setYearText(yyyy);
+    refreshPreviousDebt(yyyy, baseMonth);
   };
 
   const commitRoom = () => {
@@ -540,11 +619,17 @@ export default function Invoice({
       ...s,
       elecOld: prev.elecNew ? digits(prev.elecNew) : s.elecOld,
       waterOld: prev.waterNew ? digits(prev.waterNew) : s.waterOld,
+      previousDebt: fmtVND(getInvoiceDebt(prev)),
     }));
   };
 
   const resetNumbers = () => {
     const freshRoom = findFreshRoom(blockId, roomId, roomData);
+
+    const prev =
+      freshRoom && year && month
+        ? getPreviousInvoice(freshRoom, Number(year), Number(month))
+        : null;
 
     setF((s) => ({
       ...s,
@@ -553,6 +638,7 @@ export default function Invoice({
       elecNew: "",
       waterOld: "",
       waterNew: "",
+      previousDebt: prev ? fmtVND(getInvoiceDebt(prev)) : "",
       paid: "",
       trashUnit: fmtVND(freshRoom?.defaultTrash || 15000),
       elecUnit: "3.200",
@@ -581,7 +667,11 @@ export default function Invoice({
       waterOld: f.waterOld,
       waterNew: f.waterNew,
       waterUnit: f.waterUnit,
+      previousDebt: f.previousDebt,
+      currentMonthTotal: calc.currentMonthTotal,
+      total: calc.total,
       paid: f.paid,
+      debt: calc.debt,
       updatedAt: Date.now(),
     };
 
@@ -648,7 +738,7 @@ export default function Invoice({
     }, 1800);
 
     return true;
-  }, [blockId, roomId, year, month, meta, f]);
+  }, [blockId, roomId, year, month, meta, f, calc]);
 
   useEffect(() => {
     if (typeof registerSaveHandler === "function") {
@@ -766,6 +856,19 @@ export default function Invoice({
 
           <div className="summary summary-only-totals">
             <div className="totals">
+              <div className="row">
+                <div className="k">THIẾU THÁNG TRƯỚC:</div>
+                <div className="v-input">
+                  <input
+                    className="cell-input money"
+                    value={f.previousDebt}
+                    onChange={setMoneyField("previousDebt")}
+                    inputMode="numeric"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+
               <div className="row total">
                 <div className="k">TỔNG CỘNG:</div>
                 <div className="v">{fmtVND(calc.total)} VND</div>

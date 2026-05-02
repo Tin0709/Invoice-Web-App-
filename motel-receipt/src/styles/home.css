@@ -440,3 +440,147 @@
   padding: 10px 14px;
   border-radius: 12px;
 }
+/* =========================
+   ADD ROOM POPUP MODAL
+========================= */
+
+.add-room-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: rgba(15, 23, 42, 0.48);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+.add-room-modal {
+  width: min(520px, 100%);
+  background: #ffffff;
+  border: 1px solid #dbe3ff;
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.24);
+}
+
+.add-room-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.add-room-modal-header h2 {
+  margin: 8px 0 0;
+  color: #111827;
+  font-size: 28px;
+  font-weight: 900;
+}
+
+.add-room-modal-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4f46e5;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.add-room-modal-x {
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #111827;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.add-room-modal-fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+.add-room-modal-fields input {
+  width: 100%;
+  border: 1px solid #d7dce8;
+  border-radius: 16px;
+  padding: 16px 18px;
+  font-size: 18px;
+  outline: none;
+  background: #ffffff;
+}
+
+.add-room-modal-fields input:focus {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.12);
+}
+
+.add-room-modal-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 18px;
+  margin-top: 24px;
+}
+
+.add-room-modal-primary {
+  border: none;
+  border-radius: 16px;
+  padding: 15px 24px;
+  background: #4f46e5;
+  color: #ffffff;
+  font-size: 17px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.add-room-modal-secondary {
+  border: none;
+  background: transparent;
+  color: #111827;
+  font-size: 17px;
+  font-weight: 900;
+  cursor: pointer;
+  padding: 12px 16px;
+}
+
+.add-room-modal-primary:active,
+.add-room-modal-secondary:active,
+.add-room-modal-x:active {
+  transform: translateY(1px);
+}
+
+@media (max-width: 620px) {
+  .add-room-modal {
+    padding: 20px;
+    border-radius: 20px;
+  }
+
+  .add-room-modal-header h2 {
+    font-size: 24px;
+  }
+
+  .add-room-modal-fields input {
+    font-size: 16px;
+    padding: 15px 16px;
+  }
+
+  .add-room-modal-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .add-room-modal-primary,
+  .add-room-modal-secondary {
+    width: 100%;
+  }
+}

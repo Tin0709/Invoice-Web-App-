@@ -86,6 +86,15 @@ export default function HomePage() {
     setData(loadData());
   }, [location.key]);
 
+  const activeAddRoomBlock = useMemo(() => {
+    if (!openAddRoomBlockId) return null;
+    return data.blocks.find((block) => block.id === openAddRoomBlockId) || null;
+  }, [data.blocks, openAddRoomBlockId]);
+
+  const activeInputs = openAddRoomBlockId
+    ? roomInputs[openAddRoomBlockId] || {}
+    : {};
+
   const commitData = (updater) => {
     const latestData = loadData();
     const nextData =
@@ -133,6 +142,10 @@ export default function HomePage() {
     closeConfirm();
   };
 
+  const closeAddRoomModal = () => {
+    setOpenAddRoomBlockId(null);
+  };
+
   const handleAddBlock = () => {
     const name = newBlockName.trim();
 
@@ -153,7 +166,7 @@ export default function HomePage() {
     }));
 
     setExpandedBlockId(newBlock.id);
-    setOpenAddRoomBlockId(newBlock.id);
+    setOpenAddRoomBlockId(null);
     setNewBlockName("");
 
     showRoomToast("✅ Đã tạo dãy mới.");
@@ -262,6 +275,14 @@ export default function HomePage() {
     showRoomToast("✅ Đã thêm phòng mới thành công.");
   };
 
+  const handleAddRoomSubmit = (event) => {
+    event.preventDefault();
+
+    if (!openAddRoomBlockId) return;
+
+    handleAddRoom(openAddRoomBlockId);
+  };
+
   const handleDeleteRoom = (blockId, roomId) => {
     const block = data.blocks.find((item) => item.id === blockId);
     const room = block?.rooms.find((item) => item.id === roomId);
@@ -367,8 +388,6 @@ export default function HomePage() {
             ) : (
               filteredBlocks.map((block) => {
                 const isOpen = expandedBlockId === block.id;
-                const inputs = roomInputs[block.id] || {};
-                const isAddRoomOpen = openAddRoomBlockId === block.id;
 
                 return (
                   <div className="block-card card" key={block.id}>
@@ -470,83 +489,16 @@ export default function HomePage() {
                             );
                           })}
 
-                          {!isAddRoomOpen && (
-                            <button
-                              type="button"
-                              className="add-room-tile"
-                              onClick={() => setOpenAddRoomBlockId(block.id)}
-                            >
-                              <span className="add-room-plus">+</span>
-                              <span className="add-room-text">Thêm phòng</span>
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            className="add-room-tile"
+                            onClick={() => setOpenAddRoomBlockId(block.id)}
+                          >
+                            <span className="add-room-plus">+</span>
+                            <span className="add-room-text">Thêm phòng</span>
+                          </button>
 
-                          {isAddRoomOpen && (
-                            <div className="add-room-card">
-                              <div className="add-room-card-title">
-                                Thêm phòng mới
-                              </div>
-
-                              <input
-                                type="text"
-                                placeholder="Tên phòng"
-                                value={inputs.roomName || ""}
-                                onChange={(e) =>
-                                  handleRoomInputChange(
-                                    block.id,
-                                    "roomName",
-                                    e.target.value
-                                  )
-                                }
-                              />
-
-                              <input
-                                type="text"
-                                placeholder="Tên người thuê"
-                                value={inputs.tenantName || ""}
-                                onChange={(e) =>
-                                  handleRoomInputChange(
-                                    block.id,
-                                    "tenantName",
-                                    e.target.value
-                                  )
-                                }
-                              />
-
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                placeholder="Tiền phòng mặc định"
-                                value={inputs.defaultRent || ""}
-                                onChange={(e) =>
-                                  handleRoomInputChange(
-                                    block.id,
-                                    "defaultRent",
-                                    e.target.value
-                                  )
-                                }
-                              />
-
-                              <div className="add-room-card-actions">
-                                <button
-                                  type="button"
-                                  onClick={() => handleAddRoom(block.id)}
-                                >
-                                  + Thêm phòng
-                                </button>
-
-                                <button
-                                  type="button"
-                                  className="ghost-btn"
-                                  onClick={() => setOpenAddRoomBlockId(null)}
-                                >
-                                  Đóng
-                                </button>
-                              </div>
-                            </div>
-                          )}
-
-                          {block.rooms.length === 0 && !isAddRoomOpen && (
+                          {block.rooms.length === 0 && (
                             <div className="empty-room">
                               Chưa có phòng nào trong dãy này.
                             </div>
@@ -601,6 +553,91 @@ export default function HomePage() {
           </section>
         </div>
       </div>
+
+      {activeAddRoomBlock && (
+        <div className="add-room-modal-overlay" onClick={closeAddRoomModal}>
+          <form
+            className="add-room-modal"
+            onSubmit={handleAddRoomSubmit}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="add-room-modal-header">
+              <div>
+                <div className="add-room-modal-badge">
+                  {activeAddRoomBlock.name}
+                </div>
+
+                <h2>Thêm phòng mới</h2>
+              </div>
+
+              <button
+                type="button"
+                className="add-room-modal-x"
+                onClick={closeAddRoomModal}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="add-room-modal-fields">
+              <input
+                type="text"
+                placeholder="Tên phòng"
+                value={activeInputs.roomName || ""}
+                onChange={(e) =>
+                  handleRoomInputChange(
+                    openAddRoomBlockId,
+                    "roomName",
+                    e.target.value
+                  )
+                }
+                autoFocus
+              />
+
+              <input
+                type="text"
+                placeholder="Tên người thuê"
+                value={activeInputs.tenantName || ""}
+                onChange={(e) =>
+                  handleRoomInputChange(
+                    openAddRoomBlockId,
+                    "tenantName",
+                    e.target.value
+                  )
+                }
+              />
+
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="Tiền phòng mặc định"
+                value={activeInputs.defaultRent || ""}
+                onChange={(e) =>
+                  handleRoomInputChange(
+                    openAddRoomBlockId,
+                    "defaultRent",
+                    e.target.value
+                  )
+                }
+              />
+            </div>
+
+            <div className="add-room-modal-actions">
+              <button type="submit" className="add-room-modal-primary">
+                + Thêm phòng
+              </button>
+
+              <button
+                type="button"
+                className="add-room-modal-secondary"
+                onClick={closeAddRoomModal}
+              >
+                Đóng
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {confirmState.open && (
         <div className="confirm-overlay" onClick={closeConfirm}>

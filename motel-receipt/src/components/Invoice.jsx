@@ -16,6 +16,10 @@ import {
 /* =========================
    Helpers
 ========================= */
+
+const INVOICE_DRAFT_PREFIX = "motel_receipt_invoice_draft";
+const DRAFT_NOTICE_KEY = "motel_receipt_invoice_draft_notice";
+
 const parseMoney = (v) => {
   const raw = String(v ?? "").replace(/[^\d]/g, "");
   return raw ? Number(raw) : 0;
@@ -141,17 +145,14 @@ const getInvoiceDebt = (invoice) => {
   return clampNonNegative(total - paid);
 };
 
-const DRAFT_NOTICE_KEY = "motel_receipt_invoice_draft_notice";
-
 function getDraftUserKey() {
   const user = getAuthUser();
-
   return user?.id || user?.email || "guest";
 }
 
 function getInvoiceDraftKey({ blockId, roomId, year, month }) {
   return [
-    "motel_receipt_invoice_draft",
+    INVOICE_DRAFT_PREFIX,
     getDraftUserKey(),
     blockId || "no-block",
     roomId || "no-room",
@@ -187,8 +188,6 @@ function saveInvoiceDraft({ blockId, roomId, year, month, meta, f, roomName }) {
     if (!blockId || !roomId || !year || !month) return null;
 
     const draftKey = getInvoiceDraftKey({ blockId, roomId, year, month });
-    const period = `${String(month).padStart(2, "0")}/${year}`;
-    const safeRoomName = roomName || meta?.room || "phòng này";
 
     const draft = {
       blockId,
@@ -206,9 +205,11 @@ function saveInvoiceDraft({ blockId, roomId, year, month, meta, f, roomName }) {
       DRAFT_NOTICE_KEY,
       JSON.stringify({
         draftKey,
-        roomName: safeRoomName,
-        period,
-        message: `⚠️ Phiếu thu của ${safeRoomName} tháng ${period} chưa được lưu. Mình đã giữ lại dưới dạng bản nháp.`,
+        roomName: roomName || meta?.room || "phòng này",
+        period: `${String(month).padStart(2, "0")}/${year}`,
+        message: `⚠️ Phiếu thu của ${
+          roomName || meta?.room || "phòng này"
+        } chưa được lưu. Mình đã giữ lại dưới dạng bản nháp.`,
         updatedAt: Date.now(),
       })
     );
@@ -338,8 +339,10 @@ const createInitialInvoiceState = ({
   return {
     meta: draft?.meta || meta,
     f: draft?.f || f,
+
     baseMeta: meta,
     baseF: f,
+
     draftRestored: Boolean(draft),
     draftUpdatedAt: draft?.updatedAt || null,
   };
@@ -348,6 +351,7 @@ const createInitialInvoiceState = ({
 /* =========================
    Child blocks
 ========================= */
+
 function MetersBlock({ f, calc, setDigitsField, setMoneyField, applyPrevOld }) {
   return (
     <>
@@ -527,6 +531,7 @@ function FixedFeesBlock({ f, setMoneyField }) {
 /* =========================
    Main component
 ========================= */
+
 export default function Invoice({
   blockId,
   roomId,
@@ -553,7 +558,6 @@ export default function Invoice({
   const [saveMessage, setSaveMessage] = useState("");
 
   const draftRestoreToastShownRef = useRef(false);
-  const latestDraftRef = useRef(null);
 
   const {
     y: year,
@@ -630,17 +634,6 @@ export default function Invoice({
   const isDirty =
     lastSavedSnapshot !== null && buildSnapshot() !== lastSavedSnapshot;
 
-  latestDraftRef.current = {
-    isDirty,
-    blockId,
-    roomId,
-    year,
-    month,
-    meta,
-    f,
-    roomName: meta.room || roomText,
-  };
-
   useEffect(() => {
     if (typeof onDirtyChange === "function") {
       onDirtyChange(isDirty);
@@ -660,16 +653,6 @@ export default function Invoice({
       roomName: meta.room || roomText,
     });
   }, [isDirty, blockId, roomId, year, month, meta, f, roomText]);
-
-  useEffect(() => {
-    return () => {
-      const latestDraft = latestDraftRef.current;
-
-      if (!latestDraft?.isDirty) return;
-
-      saveInvoiceDraft(latestDraft);
-    };
-  }, []);
 
   useEffect(() => {
     if (!initialState.draftRestored) return;

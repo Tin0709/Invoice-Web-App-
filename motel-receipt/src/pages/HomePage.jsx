@@ -1,4 +1,3 @@
-import { createPortal } from "react-dom";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import AccountMenu from "../components/AccountMenu";
@@ -6,6 +5,7 @@ import LoadingCard from "../components/LoadingCard";
 import "../styles/home.css";
 import "../styles/invoice.css";
 import "../styles/loading.css";
+import { getAuthUser } from "../utils/auth";
 import {
   formatCurrency,
   getAllInvoicesFlat,
@@ -21,6 +21,9 @@ import {
   renameBlockOnServer,
 } from "../utils/supabaseStorage";
 
+const INVOICE_DRAFT_PREFIX = "motel_receipt_invoice_draft";
+const DRAFT_NOTICE_KEY = "motel_receipt_invoice_draft_notice";
+
 function formatMoneyInput(value) {
   const raw = String(value ?? "").replace(/[^\d]/g, "");
   if (!raw) return "";
@@ -35,53 +38,136 @@ function clampNonNegative(number) {
   return number < 0 ? 0 : number;
 }
 
-const DRAFT_NOTICE_KEY = "motel_receipt_invoice_draft_notice";
+function getDraftUserKey() {
+  const user = getAuthUser();
+  return user?.id || user?.email || "guest";
+}
 
-function readDraftNotice() {
+function getDraftMapKey(blockId, roomId) {
+  return `${blockId || "no-block"}_${roomId || "no-room"}`;
+}
+
+function getInvoiceDraftPrefixForCurrentUser() {
+  return `${INVOICE_DRAFT_PREFIX}_${getDraftUserKey()}_`;
+}
+
+function loadInvoiceDraftsForCurrentUser() {
+  const prefix = getInvoiceDraftPrefixForCurrentUser();
+  const drafts = [];
+
   try {
-    const raw = localStorage.getItem(DRAFT_NOTICE_KEY);
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index);
 
-    if (!raw) return "";
+      if (!key || !key.startsWith(prefix)) continue;
 
-    const notice = JSON.parse(raw);
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
 
-    localStorage.removeItem(DRAFT_NOTICE_KEY);
+      const draft = JSON.parse(raw);
 
-    return (
-      notice?.message ||
-      "⚠️ Phiếu thu chưa được lưu. Mình đã giữ lại dưới dạng bản nháp."
-    );
-  } catch {
-    localStorage.removeItem(DRAFT_NOTICE_KEY);
-    return "";
+      if (!draft?.blockId || !draft?.roomId || !draft?.meta || !draft?.f) {
+        continue;
+      }
+
+      drafts.push({
+        ...draft,
+        draftKey: key,
+      });
+    }
+  } catch (error) {
+    console.error("Load invoice drafts error:", error);
+  }
+
+  return drafts;
+}
+
+function buildLatestDraftMap() {
+  const drafts = loadInvoiceDraftsForCurrentUser();
+  const map = {};
+
+  drafts.forEach((draft) => {
+    const mapKey = getDraftMapKey(draft.blockId, draft.roomId);
+    const current = map[mapKey];
+
+    if (
+      !current ||
+      Number(draft.updatedAt || 0) > Number(current.updatedAt || 0)
+    ) {
+      map[mapKey] = draft;
+    }
+  });
+
+  return map;
+}
+
+function removeDraftsForRoom(blockId, roomId) {
+  const prefix = getInvoiceDraftPrefixForCurrentUser();
+
+  try {
+    const keysToRemove = [];
+
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index);
+
+      if (
+        key &&
+        key.startsWith(prefix) &&
+        key.includes(`_${blockId}_${roomId}_`)
+      ) {
+        keysToRemove.push(key);
+      }
+    }
+
+    keysToRemove.forEach((key) => localStorage.removeItem(key));
+  } catch (error) {
+    console.error("Remove room drafts error:", error);
   }
 }
 
-function getRoomCardMoney(room, latestInvoice) {
-  const rentAmount = latestInvoice
-    ? parseMoneyInput(latestInvoice.rentAmount ?? room.defaultRent)
-    : Number(room.defaultRent || 0);
+function removeDraftsForBlock(blockId) {
+  const prefix = getInvoiceDraftPrefixForCurrentUser();
 
-  const trashAmount = latestInvoice
-    ? parseMoneyInput(latestInvoice.trashUnit ?? room.defaultTrash ?? 15000)
-    : Number(room.defaultTrash || 15000);
+  try {
+    const keysToRemove = [];
 
-  const elecOld = parseMoneyInput(latestInvoice?.elecOld || 0);
-  const elecNew = parseMoneyInput(latestInvoice?.elecNew || 0);
-  const elecUnit = parseMoneyInput(latestInvoice?.elecUnit || 3200);
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index);
+
+      if (key && key.startsWith(prefix) && key.includes(`_${blockId}_`)) {
+        keysToRemove.push(key);
+      }
+    }
+
+    keysToRemove.forEach((key) => localStorage.removeItem(key));
+  } catch (error) {
+    console.error("Remove block drafts error:", error);
+  }
+}
+
+function getMoneyFromFields(room, fields) {
+  const rentAmount = parseMoneyInput(fields?.rentAmount ?? room.defaultRent);
+  const trashAmount = parseMoneyInput(
+    fields?.trashUnit ?? room.defaultTrash ?? 15000
+  );
+
+  const elecOld = parseMoneyInput(fields?.elecOld || 0);
+  const elecNew = parseMoneyInput(fields?.elecNew || 0);
+  const elecUnit = parseMoneyInput(fields?.elecUnit || 3200);
   const elecUsed = clampNonNegative(elecNew - elecOld);
   const elecAmount = elecUsed * elecUnit;
 
-  const waterOld = parseMoneyInput(latestInvoice?.waterOld || 0);
-  const waterNew = parseMoneyInput(latestInvoice?.waterNew || 0);
-  const waterUnit = parseMoneyInput(latestInvoice?.waterUnit || 12000);
+  const waterOld = parseMoneyInput(fields?.waterOld || 0);
+  const waterNew = parseMoneyInput(fields?.waterNew || 0);
+  const waterUnit = parseMoneyInput(fields?.waterUnit || 12000);
   const waterUsed = clampNonNegative(waterNew - waterOld);
   const waterAmount = waterUsed * waterUnit;
 
-  const paid = parseMoneyInput(latestInvoice?.paid || 0);
+  const previousDebt = parseMoneyInput(fields?.previousDebt || 0);
+  const paid = parseMoneyInput(fields?.paid || 0);
 
   const otherAmount = trashAmount + elecAmount + waterAmount;
-  const totalAmount = rentAmount + otherAmount;
+  const totalAmount = rentAmount + otherAmount + previousDebt;
   const debtAmount = clampNonNegative(totalAmount - paid);
 
   return {
@@ -89,6 +175,22 @@ function getRoomCardMoney(room, latestInvoice) {
     otherAmount,
     debtAmount,
   };
+}
+
+function getRoomCardMoney(room, latestInvoice, draft) {
+  if (draft?.f) {
+    return getMoneyFromFields(room, draft.f);
+  }
+
+  if (latestInvoice) {
+    return getMoneyFromFields(room, latestInvoice);
+  }
+
+  return getMoneyFromFields(room, {
+    rentAmount: room.defaultRent || 0,
+    trashUnit: room.defaultTrash || 15000,
+    paid: 0,
+  });
 }
 
 export default function HomePage() {
@@ -106,6 +208,7 @@ export default function HomePage() {
   const [openAddRoomBlockId, setOpenAddRoomBlockId] = useState(null);
   const [roomToast, setRoomToast] = useState("");
   const [draftToast, setDraftToast] = useState("");
+  const [draftVersion, setDraftVersion] = useState(0);
 
   const [renameBlockModal, setRenameBlockModal] = useState({
     open: false,
@@ -134,6 +237,29 @@ export default function HomePage() {
     }, 1800);
   };
 
+  const showDraftToastFromStorage = () => {
+    try {
+      const raw = localStorage.getItem(DRAFT_NOTICE_KEY);
+
+      if (!raw) return;
+
+      const notice = JSON.parse(raw);
+
+      setDraftToast(
+        notice?.message ||
+          "⚠️ Phiếu thu chưa được lưu. Mình đã giữ lại dưới dạng bản nháp."
+      );
+
+      localStorage.removeItem(DRAFT_NOTICE_KEY);
+
+      setTimeout(() => {
+        setDraftToast("");
+      }, 2800);
+    } catch {
+      localStorage.removeItem(DRAFT_NOTICE_KEY);
+    }
+  };
+
   const refreshData = async () => {
     setIsLoadingData(true);
     setPageError("");
@@ -142,8 +268,6 @@ export default function HomePage() {
       const serverData = await loadDataFromSupabase();
 
       setData(serverData);
-
-      // Sync xuống localStorage để những helper cũ vẫn đọc được cache mới nhất.
       saveData(serverData);
 
       setExpandedBlockId((currentBlockId) => {
@@ -165,20 +289,14 @@ export default function HomePage() {
 
   useEffect(() => {
     refreshData();
-
-    const draftMessage = readDraftNotice();
-
-    if (!draftMessage) return;
-
-    setDraftToast(draftMessage);
-
-    const timer = setTimeout(() => {
-      setDraftToast("");
-    }, 2600);
-
-    return () => clearTimeout(timer);
+    showDraftToastFromStorage();
+    setDraftVersion((value) => value + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.key]);
+
+  const draftMap = useMemo(() => {
+    return buildLatestDraftMap();
+  }, [draftVersion, data.blocks]);
 
   const activeAddRoomBlock = useMemo(() => {
     if (!openAddRoomBlockId) return null;
@@ -334,6 +452,8 @@ export default function HomePage() {
       }" không? Toàn bộ phòng và dữ liệu phiếu trong dãy này sẽ bị xoá.`,
       onConfirm: async () => {
         await deleteBlockOnServer(blockId);
+        removeDraftsForBlock(blockId);
+        setDraftVersion((value) => value + 1);
 
         setData((prev) => {
           const nextBlocks = prev.blocks.filter(
@@ -467,6 +587,8 @@ export default function HomePage() {
       }" không? Dữ liệu phiếu của phòng này cũng sẽ bị xoá.`,
       onConfirm: async () => {
         await deleteRoomOnServer(roomId);
+        removeDraftsForRoom(blockId, roomId);
+        setDraftVersion((value) => value + 1);
 
         setData((prev) => {
           const nextData = {
@@ -518,23 +640,19 @@ export default function HomePage() {
     return getAllInvoicesFlat(data).slice(0, 6);
   }, [data]);
 
-  const visibleToast = roomToast || draftToast;
-  const isDraftToast = !roomToast && Boolean(draftToast);
-
   return (
     <>
-      {visibleToast &&
-        createPortal(
-          <div
-            className={`save-toast no-print ${
-              isDraftToast ? "draft-toast" : ""
-            }`}
-            role="status"
-          >
-            {visibleToast}
-          </div>,
-          document.body
-        )}
+      {roomToast && (
+        <div className="save-toast no-print" role="status">
+          {roomToast}
+        </div>
+      )}
+
+      {draftToast && (
+        <div className="draft-toast no-print" role="status">
+          {draftToast}
+        </div>
+      )}
 
       <div className="home-page">
         <div className="home-shell">
@@ -631,24 +749,53 @@ export default function HomePage() {
                           <div className="block-content">
                             <div className="room-grid">
                               {block.rooms.map((room) => {
+                                const draft =
+                                  draftMap[getDraftMapKey(block.id, room.id)];
+
                                 const latestInvoice = getLatestInvoice(room);
                                 const roomMoney = getRoomCardMoney(
                                   room,
-                                  latestInvoice
+                                  latestInvoice,
+                                  draft
                                 );
 
-                                const invoiceQuery = latestInvoice
-                                  ? `?year=${latestInvoice.year}&month=${latestInvoice.month}`
-                                  : "";
+                                const sourceYear =
+                                  draft?.year || latestInvoice?.year;
+                                const sourceMonth =
+                                  draft?.month || latestInvoice?.month;
+
+                                const invoiceQuery =
+                                  sourceYear && sourceMonth
+                                    ? `?year=${sourceYear}&month=${sourceMonth}`
+                                    : "";
+
+                                const displayRoomName =
+                                  draft?.meta?.room || room.roomName;
+                                const displayTenantName =
+                                  draft?.meta?.tenant || room.tenantName;
 
                                 return (
-                                  <div className="room-card" key={room.id}>
+                                  <div
+                                    className={`room-card ${
+                                      draft ? "room-card-draft" : ""
+                                    }`}
+                                    key={room.id}
+                                  >
                                     <Link
                                       className="room-main"
                                       to={`/invoice/${block.id}/${room.id}${invoiceQuery}`}
                                     >
-                                      <h3>{room.roomName}</h3>
-                                      <p>{room.tenantName}</p>
+                                      <div className="room-card-head">
+                                        <h3>{displayRoomName}</h3>
+
+                                        {draft && (
+                                          <span className="room-draft-badge">
+                                            Bản nháp chưa lưu
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      <p>{displayTenantName}</p>
 
                                       <div className="room-meta">
                                         <span>
@@ -676,6 +823,12 @@ export default function HomePage() {
                                           {formatCurrency(roomMoney.debtAmount)}{" "}
                                           đ
                                         </span>
+
+                                        {draft && (
+                                          <span className="room-draft-note">
+                                            Đang hiển thị thông tin nháp
+                                          </span>
+                                        )}
                                       </div>
                                     </Link>
 

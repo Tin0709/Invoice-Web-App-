@@ -1,13 +1,12 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import "../styles/history.css";
+import { formatCurrency, getAllInvoicesFlat, saveData } from "../utils/storage";
 import {
-  deleteInvoice,
-  deleteInvoicesByMonth,
-  formatCurrency,
-  getAllInvoicesFlat,
-  loadData,
-} from "../utils/storage";
+  deleteInvoiceOnServer,
+  deleteInvoicesByMonthOnServer,
+  loadDataFromSupabase,
+} from "../utils/supabaseStorage";
 
 const DEFAULT_FILTERS = {
   search: "",
@@ -73,8 +72,10 @@ function groupInvoicesByMonth(invoices) {
 }
 
 export default function HistoryPage() {
-  const [data, setData] = useState(() => loadData());
+  const [data, setData] = useState({ blocks: [] });
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [pageError, setPageError] = useState("");
 
   const [confirmState, setConfirmState] = useState({
     open: false,
@@ -82,6 +83,29 @@ export default function HistoryPage() {
     message: "",
     onConfirm: null,
   });
+
+  const refreshData = async () => {
+    setIsLoadingData(true);
+    setPageError("");
+
+    try {
+      const serverData = await loadDataFromSupabase();
+
+      setData(serverData);
+
+      // Giữ cache local để Invoice.jsx đọc số cũ/tháng trước ổn định.
+      saveData(serverData);
+    } catch (error) {
+      console.error("Load history data error:", error);
+      setPageError(error.message || "Không thể tải lịch sử từ Supabase.");
+    } finally {
+      setIsLoadingData(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshData();
+  }, []);
 
   const invoices = useMemo(() => getAllInvoicesFlat(data), [data]);
 
@@ -193,27 +217,26 @@ export default function HistoryPage() {
     });
   };
 
-  const handleConfirmOk = () => {
-    if (typeof confirmState.onConfirm === "function") {
-      confirmState.onConfirm();
+  const handleConfirmOk = async () => {
+    try {
+      if (typeof confirmState.onConfirm === "function") {
+        await confirmState.onConfirm();
+      }
+    } catch (error) {
+      console.error(error);
+      setPageError(error.message || "Không thể xoá lịch sử.");
+    } finally {
+      closeConfirm();
     }
-
-    closeConfirm();
   };
 
   const handleDeleteOne = (item) => {
     openConfirm({
       title: "Xoá lịch sử",
       message: `Bạn có chắc muốn xoá lịch sử ${item.roomName} - ${item.month}/${item.year} không?`,
-      onConfirm: () => {
-        const next = deleteInvoice(
-          item.blockId,
-          item.roomId,
-          item.year,
-          item.month
-        );
-
-        setData(next);
+      onConfirm: async () => {
+        await deleteInvoiceOnServer(item.roomId, item.year, item.month);
+        await refreshData();
       },
     });
   };
@@ -222,9 +245,9 @@ export default function HistoryPage() {
     openConfirm({
       title: "Xoá lịch sử theo tháng",
       message: `Bạn có chắc muốn xoá toàn bộ lịch sử của tháng ${group.month}/${group.year} không?`,
-      onConfirm: () => {
-        const next = deleteInvoicesByMonth(group.year, group.month);
-        setData(next);
+      onConfirm: async () => {
+        await deleteInvoicesByMonthOnServer(group.year, group.month);
+        await refreshData();
       },
     });
   };
@@ -247,187 +270,206 @@ export default function HistoryPage() {
             </div>
           </div>
 
-          {invoices.length > 0 && (
-            <section className="history-filter-card">
-              <div className="history-filter-head">
-                <div>
-                  <h2>Bộ lọc lịch sử</h2>
-
-                  <p>
-                    Đang hiển thị {filteredInvoices.length}/{invoices.length}{" "}
-                    phiếu.
-                  </p>
-                </div>
-
-                {hasActiveFilters && (
-                  <button
-                    type="button"
-                    className="history-clear-filter-btn"
-                    onClick={resetFilters}
-                  >
-                    Xoá bộ lọc
-                  </button>
-                )}
-              </div>
-
-              <div className="history-filter-grid">
-                <div className="history-filter-field history-search-field">
-                  <label>Tìm kiếm</label>
-
-                  <input
-                    type="text"
-                    placeholder="Tìm phòng, người thuê, dãy..."
-                    value={filters.search}
-                    onChange={(e) => updateFilter("search", e.target.value)}
-                  />
-                </div>
-
-                <div className="history-filter-field">
-                  <label>Tháng</label>
-
-                  <select
-                    value={filters.month}
-                    onChange={(e) => updateFilter("month", e.target.value)}
-                  >
-                    <option value="all">Tất cả</option>
-                    {Array.from({ length: 12 }, (_, index) => index + 1).map(
-                      (month) => (
-                        <option key={month} value={month}>
-                          Tháng {month}
-                        </option>
-                      )
-                    )}
-                  </select>
-                </div>
-
-                <div className="history-filter-field">
-                  <label>Năm</label>
-
-                  <select
-                    value={filters.year}
-                    onChange={(e) => updateFilter("year", e.target.value)}
-                  >
-                    <option value="all">Tất cả</option>
-                    {yearOptions.map((year) => (
-                      <option key={year} value={year}>
-                        {year}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="history-filter-field">
-                  <label>Dãy</label>
-
-                  <select
-                    value={filters.blockId}
-                    onChange={(e) => updateFilter("blockId", e.target.value)}
-                  >
-                    <option value="all">Tất cả</option>
-                    {blockOptions.map((block) => (
-                      <option key={block.id} value={block.id}>
-                        {block.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="history-filter-field">
-                  <label>Trạng thái</label>
-
-                  <select
-                    value={filters.status}
-                    onChange={(e) => updateFilter("status", e.target.value)}
-                  >
-                    <option value="all">Tất cả</option>
-                    <option value="debt">Còn thiếu</option>
-                    <option value="paid">Đã trả đủ</option>
-                  </select>
-                </div>
-              </div>
-            </section>
+          {pageError && (
+            <div className="history-empty-card">
+              <h3>Không thể tải dữ liệu</h3>
+              <p>{pageError}</p>
+            </div>
           )}
 
-          {invoices.length === 0 ? (
+          {isLoadingData ? (
             <div className="history-empty-card">
-              <h3>Chưa có lịch sử nào</h3>
-              <p>Khi bạn lưu invoice, lịch sử sẽ xuất hiện ở đây.</p>
-            </div>
-          ) : grouped.length === 0 ? (
-            <div className="history-empty-card">
-              <h3>Không tìm thấy phiếu phù hợp</h3>
-              <p>Thử xoá bộ lọc hoặc nhập từ khoá khác.</p>
+              <h3>Đang tải lịch sử</h3>
+              <p>Đang lấy dữ liệu từ Supabase...</p>
             </div>
           ) : (
-            <div className="timeline-groups">
-              {grouped.map((group) => (
-                <section className="timeline-group" key={group.key}>
-                  <div className="timeline-group-header">
+            <>
+              {invoices.length > 0 && (
+                <section className="history-filter-card">
+                  <div className="history-filter-head">
                     <div>
-                      <h2>
-                        {group.month}/{group.year}
-                      </h2>
+                      <h2>Bộ lọc lịch sử</h2>
 
-                      <span>{group.items.length} phiếu</span>
+                      <p>
+                        Đang hiển thị {filteredInvoices.length}/
+                        {invoices.length} phiếu.
+                      </p>
                     </div>
 
-                    <button
-                      type="button"
-                      className="danger-btn"
-                      onClick={() => handleDeleteMonth(group)}
-                    >
-                      Xoá tháng này
-                    </button>
+                    {hasActiveFilters && (
+                      <button
+                        type="button"
+                        className="history-clear-filter-btn"
+                        onClick={resetFilters}
+                      >
+                        Xoá bộ lọc
+                      </button>
+                    )}
                   </div>
 
-                  <div className="timeline-list">
-                    {group.items.map((item, index) => {
-                      const debt = getDebtValue(item);
+                  <div className="history-filter-grid">
+                    <div className="history-filter-field history-search-field">
+                      <label>Tìm kiếm</label>
 
-                      return (
-                        <div
-                          className="timeline-item"
-                          key={`${group.key}-${item.roomId}-${index}`}
-                        >
-                          <Link
-                            className="timeline-main"
-                            to={`/invoice/${item.blockId}/${item.roomId}?year=${item.year}&month=${item.month}`}
-                          >
-                            <div className="timeline-left">
-                              <strong>{item.roomName}</strong>
+                      <input
+                        type="text"
+                        placeholder="Tìm phòng, người thuê, dãy..."
+                        value={filters.search}
+                        onChange={(e) => updateFilter("search", e.target.value)}
+                      />
+                    </div>
 
-                              <span>
-                                {item.blockName} - {item.tenantName}
-                              </span>
-                            </div>
+                    <div className="history-filter-field">
+                      <label>Tháng</label>
 
-                            <div className="timeline-right">
-                              <span
-                                className={
-                                  debt > 0
-                                    ? "history-debt"
-                                    : "history-debt history-paid"
-                                }
-                              >
-                                Còn thiếu: {formatCurrency(debt)} đ
-                              </span>
-                            </div>
-                          </Link>
+                      <select
+                        value={filters.month}
+                        onChange={(e) => updateFilter("month", e.target.value)}
+                      >
+                        <option value="all">Tất cả</option>
+                        {Array.from(
+                          { length: 12 },
+                          (_, index) => index + 1
+                        ).map((month) => (
+                          <option key={month} value={month}>
+                            Tháng {month}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                          <button
-                            type="button"
-                            className="danger-btn small-btn"
-                            onClick={() => handleDeleteOne(item)}
-                          >
-                            Xoá
-                          </button>
-                        </div>
-                      );
-                    })}
+                    <div className="history-filter-field">
+                      <label>Năm</label>
+
+                      <select
+                        value={filters.year}
+                        onChange={(e) => updateFilter("year", e.target.value)}
+                      >
+                        <option value="all">Tất cả</option>
+                        {yearOptions.map((year) => (
+                          <option key={year} value={year}>
+                            {year}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="history-filter-field">
+                      <label>Dãy</label>
+
+                      <select
+                        value={filters.blockId}
+                        onChange={(e) =>
+                          updateFilter("blockId", e.target.value)
+                        }
+                      >
+                        <option value="all">Tất cả</option>
+                        {blockOptions.map((block) => (
+                          <option key={block.id} value={block.id}>
+                            {block.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="history-filter-field">
+                      <label>Trạng thái</label>
+
+                      <select
+                        value={filters.status}
+                        onChange={(e) => updateFilter("status", e.target.value)}
+                      >
+                        <option value="all">Tất cả</option>
+                        <option value="debt">Còn thiếu</option>
+                        <option value="paid">Đã trả đủ</option>
+                      </select>
+                    </div>
                   </div>
                 </section>
-              ))}
-            </div>
+              )}
+
+              {invoices.length === 0 ? (
+                <div className="history-empty-card">
+                  <h3>Chưa có lịch sử nào</h3>
+                  <p>Khi bạn lưu invoice, lịch sử sẽ xuất hiện ở đây.</p>
+                </div>
+              ) : grouped.length === 0 ? (
+                <div className="history-empty-card">
+                  <h3>Không tìm thấy phiếu phù hợp</h3>
+                  <p>Thử xoá bộ lọc hoặc nhập từ khoá khác.</p>
+                </div>
+              ) : (
+                <div className="timeline-groups">
+                  {grouped.map((group) => (
+                    <section className="timeline-group" key={group.key}>
+                      <div className="timeline-group-header">
+                        <div>
+                          <h2>
+                            {group.month}/{group.year}
+                          </h2>
+
+                          <span>{group.items.length} phiếu</span>
+                        </div>
+
+                        <button
+                          type="button"
+                          className="danger-btn"
+                          onClick={() => handleDeleteMonth(group)}
+                        >
+                          Xoá tháng này
+                        </button>
+                      </div>
+
+                      <div className="timeline-list">
+                        {group.items.map((item, index) => {
+                          const debt = getDebtValue(item);
+
+                          return (
+                            <div
+                              className="timeline-item"
+                              key={`${group.key}-${item.roomId}-${index}`}
+                            >
+                              <Link
+                                className="timeline-main"
+                                to={`/invoice/${item.blockId}/${item.roomId}?year=${item.year}&month=${item.month}`}
+                              >
+                                <div className="timeline-left">
+                                  <strong>{item.roomName}</strong>
+
+                                  <span>
+                                    {item.blockName} - {item.tenantName}
+                                  </span>
+                                </div>
+
+                                <div className="timeline-right">
+                                  <span
+                                    className={
+                                      debt > 0
+                                        ? "history-debt"
+                                        : "history-debt history-paid"
+                                    }
+                                  >
+                                    Còn thiếu: {formatCurrency(debt)} đ
+                                  </span>
+                                </div>
+                              </Link>
+
+                              <button
+                                type="button"
+                                className="danger-btn small-btn"
+                                onClick={() => handleDeleteOne(item)}
+                              >
+                                Xoá
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

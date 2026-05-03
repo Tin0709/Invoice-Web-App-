@@ -749,7 +749,8 @@ export default function HomePage() {
   const handleRoomManageDelete = () => {
     const { blockId, roomId } = roomManageModal;
 
-    closeRoomManageModal();
+    // Giữ modal "Tuỳ chọn phòng" ở phía sau confirm.
+    // Khi bấm Huỷ, confirm đóng và người dùng quay lại modal này.
     handleDeleteRoom(blockId, roomId);
   };
 
@@ -994,6 +995,7 @@ export default function HomePage() {
           return nextData;
         });
 
+        closeRoomManageModal();
         showRoomToast("Đã xoá phòng.");
       },
     });
@@ -1513,31 +1515,60 @@ export default function HomePage() {
       {roomManageModal.open && (
         <div className="add-room-modal-overlay" onClick={closeRoomManageModal}>
           <form
-            className="add-room-modal"
+            className="add-room-modal room-manage-modal-new"
             onSubmit={handleRoomManageSubmit}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="add-room-modal-header">
-              <div>
-                <div className="add-room-modal-badge">Tuỳ chọn phòng</div>
-
-                <h2>{roomManageModal.roomName || "Phòng"}</h2>
-                <p style={{ marginTop: "6px", color: "#6b7280" }}>
-                  {roomManageModal.blockName || ""}
-                </p>
-              </div>
-
-              <button
-                type="button"
-                className="add-room-modal-x"
-                onClick={closeRoomManageModal}
+            <button
+              type="button"
+              className="room-manage-delete-icon-btn"
+              onClick={handleRoomManageDelete}
+              aria-label="Xoá phòng"
+              title="Xoá phòng"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
               >
-                ×
-              </button>
+                <path d="M3 6h18" />
+                <path d="M8 6V4h8v2" />
+                <path d="M19 6l-1 14H6L5 6" />
+                <path d="M10 11v5" />
+                <path d="M14 11v5" />
+              </svg>
+            </button>
+
+            <button
+              type="button"
+              className="add-room-modal-x"
+              onClick={closeRoomManageModal}
+              aria-label="Đóng"
+            >
+              ×
+            </button>
+
+            <div className="room-manage-top">
+              <div className="room-manage-badge">Tuỳ chọn phòng</div>
+
+              <h2>{roomManageModal.roomName || "Phòng"}</h2>
+
+              <p className="room-manage-subtitle">
+                Thuộc dãy <strong>{roomManageModal.blockName || ""}</strong>
+              </p>
             </div>
 
-            <div className="add-room-modal-fields">
+            <div className="room-manage-panel">
+              <label className="room-manage-label" htmlFor="room-manage-name">
+                Tên phòng
+              </label>
+
               <input
+                id="room-manage-name"
                 type="text"
                 placeholder="Nhập tên phòng mới"
                 value={roomManageModal.value}
@@ -1549,27 +1580,20 @@ export default function HomePage() {
                 }
                 autoFocus
               />
+
+              <p className="room-manage-help">
+                Bạn có thể đổi tên phòng để dễ quản lý hơn.
+              </p>
             </div>
 
-            <div
-              className="add-room-modal-actions"
-              style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}
-            >
-              <button type="submit" className="add-room-modal-primary">
+            <div className="room-manage-actions-new">
+              <button type="submit" className="room-manage-save-btn">
                 Lưu tên mới
               </button>
 
               <button
                 type="button"
-                className="danger-btn"
-                onClick={handleRoomManageDelete}
-              >
-                Xoá phòng
-              </button>
-
-              <button
-                type="button"
-                className="add-room-modal-secondary"
+                className="room-manage-close-btn"
                 onClick={closeRoomManageModal}
               >
                 Đóng

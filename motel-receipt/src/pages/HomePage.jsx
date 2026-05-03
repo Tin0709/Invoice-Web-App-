@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import AccountMenu from "../components/AccountMenu";
 import LoadingCard from "../components/LoadingCard";
@@ -281,6 +281,16 @@ export default function HomePage() {
   const [roomToast, setRoomToast] = useState("");
   const [draftToast, setDraftToast] = useState("");
 
+  const draftToastTimerRef = useRef(null);
+  const draftToastExitTimerRef = useRef(null);
+  const draftToastStartYRef = useRef(0);
+  const draftToastDragYRef = useRef(0);
+  const draftToastPointerIdRef = useRef(null);
+
+  const [draftToastDragY, setDraftToastDragY] = useState(0);
+  const [isDraftToastDragging, setIsDraftToastDragging] = useState(false);
+  const [isDraftToastClosing, setIsDraftToastClosing] = useState(false);
+
   const [renameBlockModal, setRenameBlockModal] = useState({
     open: false,
     blockId: null,
@@ -308,6 +318,98 @@ export default function HomePage() {
     }, 1800);
   };
 
+  function clearDraftToastTimer() {
+    if (draftToastTimerRef.current) {
+      clearTimeout(draftToastTimerRef.current);
+      draftToastTimerRef.current = null;
+    }
+  }
+
+  function clearDraftToastExitTimer() {
+    if (draftToastExitTimerRef.current) {
+      clearTimeout(draftToastExitTimerRef.current);
+      draftToastExitTimerRef.current = null;
+    }
+  }
+
+  function closeDraftToast(immediate = false) {
+    clearDraftToastTimer();
+    clearDraftToastExitTimer();
+
+    setIsDraftToastDragging(false);
+    draftToastPointerIdRef.current = null;
+
+    if (immediate) {
+      setDraftToast("");
+      setIsDraftToastClosing(false);
+      setDraftToastDragY(0);
+      draftToastDragYRef.current = 0;
+      return;
+    }
+
+    setIsDraftToastClosing(true);
+
+    draftToastExitTimerRef.current = setTimeout(() => {
+      setDraftToast("");
+      setIsDraftToastClosing(false);
+      setDraftToastDragY(0);
+      draftToastDragYRef.current = 0;
+    }, 280);
+  }
+
+  function scheduleDraftToastClose(delay = 3600) {
+    clearDraftToastTimer();
+
+    draftToastTimerRef.current = setTimeout(() => {
+      closeDraftToast();
+    }, delay);
+  }
+
+  function handleDraftToastPointerDown(event) {
+    clearDraftToastTimer();
+    clearDraftToastExitTimer();
+
+    setIsDraftToastClosing(false);
+
+    draftToastStartYRef.current = event.clientY;
+    draftToastDragYRef.current = 0;
+    draftToastPointerIdRef.current = event.pointerId;
+
+    setIsDraftToastDragging(true);
+
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  }
+
+  function handleDraftToastPointerMove(event) {
+    if (draftToastPointerIdRef.current !== event.pointerId) return;
+
+    const deltaY = event.clientY - draftToastStartYRef.current;
+    const nextY = Math.min(0, Math.max(deltaY, -130));
+
+    draftToastDragYRef.current = nextY;
+    setDraftToastDragY(nextY);
+  }
+
+  function handleDraftToastPointerEnd(event) {
+    if (draftToastPointerIdRef.current !== event.pointerId) return;
+
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+
+    const finalY = draftToastDragYRef.current;
+
+    setIsDraftToastDragging(false);
+    draftToastPointerIdRef.current = null;
+
+    if (finalY <= -48) {
+      closeDraftToast();
+      return;
+    }
+
+    draftToastDragYRef.current = 0;
+    setDraftToastDragY(0);
+    scheduleDraftToastClose(2600);
+  }
+
   const showDraftToastFromStorage = () => {
     try {
       const raw = localStorage.getItem(DRAFT_NOTICE_KEY);
@@ -321,11 +423,13 @@ export default function HomePage() {
           "⚠️ Phiếu thu chưa được lưu. Mình đã giữ lại dưới dạng bản nháp."
       );
 
+      setIsDraftToastClosing(false);
+      setDraftToastDragY(0);
+      draftToastDragYRef.current = 0;
+
       localStorage.removeItem(DRAFT_NOTICE_KEY);
 
-      setTimeout(() => {
-        setDraftToast("");
-      }, 2800);
+      scheduleDraftToastClose(4200);
     } catch {
       localStorage.removeItem(DRAFT_NOTICE_KEY);
     }
@@ -374,6 +478,14 @@ export default function HomePage() {
     showDraftToastFromStorage();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.key]);
+
+  useEffect(() => {
+    return () => {
+      clearDraftToastTimer();
+      clearDraftToastExitTimer();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const activeAddRoomBlock = useMemo(() => {
     if (!openAddRoomBlockId) return null;
@@ -734,8 +846,28 @@ export default function HomePage() {
       )}
 
       {draftToast && (
-        <div className="draft-toast no-print" role="status">
-          {draftToast}
+        <div
+          className={`draft-toast swipe-toast no-print ${
+            isDraftToastDragging ? "is-dragging" : ""
+          } ${isDraftToastClosing ? "is-closing" : ""}`}
+          style={{
+            "--toast-drag-y": `${draftToastDragY}px`,
+          }}
+          role="status"
+          title="Giữ để đọc, kéo lên để đóng"
+          onMouseEnter={clearDraftToastTimer}
+          onMouseLeave={() => {
+            if (!isDraftToastDragging && !isDraftToastClosing) {
+              scheduleDraftToastClose(2600);
+            }
+          }}
+          onPointerDown={handleDraftToastPointerDown}
+          onPointerMove={handleDraftToastPointerMove}
+          onPointerUp={handleDraftToastPointerEnd}
+          onPointerCancel={handleDraftToastPointerEnd}
+        >
+          <span className="toast-grabber" aria-hidden="true" />
+          <span>{draftToast}</span>
         </div>
       )}
 

@@ -83,14 +83,23 @@ function getDebtValue(item) {
 }
 
 function getBlockTone(blockName) {
+  const tones = ["block-a", "block-b", "block-c", "block-d"];
   const text = normalizeText(blockName);
 
-  if (text.includes("day a")) return "block-a";
-  if (text.includes("day b")) return "block-b";
-  if (text.includes("day c")) return "block-c";
-  if (text.includes("day d")) return "block-d";
+  const letterMatch = text.match(/day\s*([a-z])/);
 
-  return "block-default";
+  if (letterMatch?.[1]) {
+    const letterIndex = letterMatch[1].charCodeAt(0) - 97;
+    return tones[((letterIndex % tones.length) + tones.length) % tones.length];
+  }
+
+  let hash = 0;
+
+  for (let index = 0; index < text.length; index += 1) {
+    hash = text.charCodeAt(index) + ((hash << 5) - hash);
+  }
+
+  return tones[Math.abs(hash) % tones.length];
 }
 
 function groupInvoicesByMonth(invoices) {

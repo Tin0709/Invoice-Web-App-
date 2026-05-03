@@ -3411,3 +3411,181 @@
     grid-template-columns: 1fr !important;
   }
 }
+/* =========================
+   HOME RECENT HISTORY COLORS
+   Màu lịch sử gần đây theo dãy
+========================= */
+
+.home-history-item {
+  --history-color: #94a3b8;
+  --history-bg: #f8fafc;
+  --history-chip-bg: #e5e7eb;
+  --history-chip-text: #475569;
+
+  position: relative;
+  overflow: hidden;
+  border-left: 5px solid var(--history-color) !important;
+  background: linear-gradient(180deg, #ffffff 0%, var(--history-bg) 100%);
+  border-radius: 18px;
+  padding: 16px 18px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.home-history-item:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--history-color) 28%, #e5e7eb);
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.07);
+}
+
+.home-history-item.block-a {
+  --history-color: #8b5cf6;
+  --history-bg: #faf5ff;
+  --history-chip-bg: #f3e8ff;
+  --history-chip-text: #7c3aed;
+}
+
+.home-history-item.block-b {
+  --history-color: #22c55e;
+  --history-bg: #f0fdf4;
+  --history-chip-bg: #dcfce7;
+  --history-chip-text: #15803d;
+}
+
+.home-history-item.block-c {
+  --history-color: #f59e0b;
+  --history-bg: #fffbeb;
+  --history-chip-bg: #fef3c7;
+  --history-chip-text: #b45309;
+}
+
+.home-history-item.block-d {
+  --history-color: #06b6d4;
+  --history-bg: #ecfeff;
+  --history-chip-bg: #cffafe;
+  --history-chip-text: #0f766e;
+}
+
+.home-history-item.block-default {
+  --history-color: #8b5cf6;
+  --history-bg: #faf5ff;
+  --history-chip-bg: #f3e8ff;
+  --history-chip-text: #7c3aed;
+}
+
+.home-history-main {
+  min-width: 0;
+}
+
+.home-history-main strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #111827;
+  font-size: 20px;
+  line-height: 1.15;
+  font-weight: 950;
+}
+
+.home-history-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.history-item .home-history-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--history-chip-bg);
+  color: var(--history-chip-text);
+  font-size: 12px;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.history-item .home-history-room {
+  color: #6b7280;
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.home-history-tenant {
+  color: #6b7280;
+  font-size: 15px;
+  font-weight: 750;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Mobile */
+@media (max-width: 620px) {
+  .home-history-item {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+    padding: 15px;
+  }
+
+  .home-history-main strong {
+    font-size: 19px;
+  }
+
+  .home-history-tenant {
+    text-align: left;
+    white-space: normal;
+  }
+
+  .history-item .home-history-chip {
+    min-height: 26px;
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
+  .history-item .home-history-room {
+    font-size: 14px;
+  }
+}
+/* =========================
+   FIX SCROLL FLICKER
+   Tránh thẻ phòng bị nhấp nháy / biến mất tạm thời khi scroll nhanh
+========================= */
+
+.block-content {
+  animation: none !important;
+  transform: none !important;
+  will-change: auto !important;
+}
+
+.room-card,
+.add-room-tile,
+.block-card,
+.history-section,
+.home-toolbar {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.room-card,
+.add-room-tile {
+  animation: none !important;
+  will-change: auto !important;
+}
+
+/* Giữ hover nhẹ trên desktop, nhưng không dùng quá nhiều layer */
+.room-card:hover,
+.add-room-tile:hover {
+  transform: translateY(-1px);
+}
+
+/* Trên thiết bị cảm ứng, bỏ hover transform để lướt mượt hơn */
+@media (hover: none) {
+  .room-card:hover,
+  .add-room-tile:hover {
+    transform: none !important;
+    box-shadow: none !important;
+  }
+}

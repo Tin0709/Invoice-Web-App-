@@ -49,14 +49,23 @@ function normalizeBlockText(value) {
 }
 
 function getBlockTone(blockName) {
+  const tones = ["block-a", "block-b", "block-c", "block-d"];
   const text = normalizeBlockText(blockName);
 
-  if (text.includes("day a")) return "block-a";
-  if (text.includes("day b")) return "block-b";
-  if (text.includes("day c")) return "block-c";
-  if (text.includes("day d")) return "block-d";
+  const letterMatch = text.match(/day\s*([a-z])/);
 
-  return "block-default";
+  if (letterMatch?.[1]) {
+    const letterIndex = letterMatch[1].charCodeAt(0) - 97;
+    return tones[((letterIndex % tones.length) + tones.length) % tones.length];
+  }
+
+  let hash = 0;
+
+  for (let index = 0; index < text.length; index += 1) {
+    hash = text.charCodeAt(index) + ((hash << 5) - hash);
+  }
+
+  return tones[Math.abs(hash) % tones.length];
 }
 
 function getDraftUserKey() {
@@ -1436,29 +1445,41 @@ export default function HomePage() {
                   <p className="history-empty">Chưa có invoice nào được lưu.</p>
                 ) : (
                   <div className="history-list">
-                    {recentInvoices.map((item, index) => (
-                      <Link
-                        key={`${item.blockId}-${item.roomId}-${item.month}-${item.year}-${index}`}
-                        className="history-item"
-                        to={`/invoice/${item.blockId}/${item.roomId}?year=${item.year}&month=${item.month}`}
-                        state={{ activeBlockId: item.blockId }}
-                        onClick={() => rememberActiveBlock(item.blockId)}
-                      >
-                        <div>
-                          <strong>
-                            {item.month}/{item.year}
-                          </strong>
+                    {recentInvoices.map((item, index) => {
+                      const toneClass = getBlockTone(item.blockName);
 
-                          <span>
-                            {item.blockName} - {item.roomName}
-                          </span>
-                        </div>
+                      return (
+                        <Link
+                          key={`${item.blockId}-${item.roomId}-${item.month}-${item.year}-${index}`}
+                          className={`history-item home-history-item ${toneClass}`}
+                          to={`/invoice/${item.blockId}/${item.roomId}?year=${item.year}&month=${item.month}`}
+                          state={{ activeBlockId: item.blockId }}
+                          onClick={() => rememberActiveBlock(item.blockId)}
+                        >
+                          <div className="home-history-main">
+                            <strong>
+                              {item.month}/{item.year}
+                            </strong>
 
-                        <div>
-                          <span>{item.tenantName}</span>
-                        </div>
-                      </Link>
-                    ))}
+                            <div className="home-history-meta">
+                              <span
+                                className={`home-history-chip ${toneClass}`}
+                              >
+                                {item.blockName}
+                              </span>
+
+                              <span className="home-history-room">
+                                {item.roomName}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="home-history-tenant">
+                            {item.tenantName}
+                          </div>
+                        </Link>
+                      );
+                    })}
                   </div>
                 )}
               </section>

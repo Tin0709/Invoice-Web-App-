@@ -4,69 +4,75 @@ import { saveAuthUser } from "../utils/auth";
 import { supabase } from "../utils/supabase";
 import "../styles/login.css";
 
+function saveSupabaseUser(user, provider = "google") {
+  if (!user) return;
+
+  saveAuthUser({
+    id: user.id,
+    email: user.email,
+    name: user.user_metadata?.full_name || "",
+    avatar: user.user_metadata?.avatar_url || "",
+    provider,
+    loggedInAt: Date.now(),
+  });
+}
+
+function getAuthErrorFromUrl() {
+  const searchParams = new URLSearchParams(window.location.search);
+  const hashParams = new URLSearchParams(
+    window.location.hash.replace(/^#/, "")
+  );
+
+  return (
+    searchParams.get("error_description") ||
+    hashParams.get("error_description") ||
+    searchParams.get("error") ||
+    hashParams.get("error") ||
+    ""
+  );
+}
+
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
-  const [message, setMessage] = useState("Đang xử lý đăng nhập Google...");
+
+  const [statusText, setStatusText] = useState("Đang xác thực tài khoản...");
+  const [errorText, setErrorText] = useState("");
 
   useEffect(() => {
     let mounted = true;
 
-    const saveUserAndGoHome = async (session) => {
-      const user = session?.user;
-
-      if (!user) {
-        throw new Error("Không tìm thấy phiên đăng nhập. Vui lòng thử lại.");
-      }
-
-      saveAuthUser({
-        id: user.id,
-        email: user.email,
-        name: user.user_metadata?.full_name || "",
-        avatar: user.user_metadata?.avatar_url || "",
-        provider: "google",
-        loggedInAt: Date.now(),
-      });
-
-      if (mounted) {
-        navigate("/", { replace: true });
-      }
-    };
-
-    const finishLogin = async () => {
+    const finishGoogleLogin = async () => {
       try {
-        const url = new URL(window.location.href);
+        const urlError = getAuthErrorFromUrl();
 
-        /**
-         * Case 1:
-         * Supabase PKCE flow:
-         * /auth/callback?code=...
-         */
-        const code = url.searchParams.get("code");
+        if (urlError) {
+          throw new Error(urlError);
+        }
+
+        const searchParams = new URLSearchParams(window.location.search);
+        const hashParams = new URLSearchParams(
+          window.location.hash.replace(/^#/, "")
+        );
+
+        let session = null;
+
+        const code = searchParams.get("code");
+        const accessToken = hashParams.get("access_token");
+        const refreshToken = hashParams.get("refresh_token");
 
         if (code) {
+          setStatusText("Đang hoàn tất đăng nhập...");
+
           const { data, error } = await supabase.auth.exchangeCodeForSession(
             code
           );
 
           if (error) throw error;
 
-          await saveUserAndGoHome(data.session);
-          return;
-        }
+          session = data?.session;
+        } else if (accessToken && refreshToken) {
+          setStatusText("Đang lưu phiên đăng nhập...");
 
-        /**
-         * Case 2:
-         * Supabase implicit flow:
-         * /auth/callback#access_token=...&refresh_token=...
-         */
-        const hashParams = new URLSearchParams(
-          window.location.hash.replace("#", "")
-        );
-
-        const accessToken = hashParams.get("access_token");
-        const refreshToken = hashParams.get("refresh_token");
-
-        if (accessToken && refreshToken) {
           const { data, error } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken,
@@ -74,33 +80,46 @@ export default function AuthCallbackPage() {
 
           if (error) throw error;
 
-          await saveUserAndGoHome(data.session);
-          return;
+          session = data?.session;
+        } else {
+          setStatusText("Đang kiểm tra phiên đăng nhập...");
+
+          const { data, error } = await supabase.auth.getSession();
+
+          if (error) throw error;
+
+          session = data?.session;
         }
 
-        /**
-         * Case 3:
-         * Session already saved by Supabase.
-         */
-        const { data, error } = await supabase.auth.getSession();
+        const user = session?.user;
 
-        if (error) throw error;
+        if (!user) {
+          throw new Error("Không tìm thấy phiên đăng nhập Google.");
+        }
 
-        await saveUserAndGoHome(data.session);
+        saveSupabaseUser(user, user.app_metadata?.provider || "google");
+
+        if (!mounted) return;
+
+        setStatusText("Đăng nhập thành công. Đang chuyển trang...");
+
+        setTimeout(() => {
+          navigate("/", { replace: true });
+        }, 450);
       } catch (error) {
-        console.error(error);
+        console.error("Google callback error:", error);
 
-        if (mounted) {
-          setMessage(error.message || "Đăng nhập Google thất bại.");
+        if (!mounted) return;
 
-          setTimeout(() => {
-            navigate("/login", { replace: true });
-          }, 1800);
-        }
+        setStatusText("Không thể hoàn tất đăng nhập.");
+        setErrorText(
+          error.message ||
+            "Phiên đăng nhập Google không hợp lệ. Vui lòng thử lại."
+        );
       }
     };
 
-    finishLogin();
+    finishGoogleLogin();
 
     return () => {
       mounted = false;
@@ -108,12 +127,35 @@ export default function AuthCallbackPage() {
   }, [navigate]);
 
   return (
-    <div className="login-page">
-      <div className="login-card auth-callback-card">
-        <div className="login-card-head">
-          <h2>Đăng nhập Google</h2>
-          <p>{message}</p>
-        </div>
+    <div className="auth-callback-page">
+      <div className="auth-callback-card">
+        {!errorText ? (
+          <>
+            <div className="auth-callback-spinner" aria-hidden="true" />
+
+            <h1>Đang đăng nhập</h1>
+
+            <p>{statusText}</p>
+          </>
+        ) : (
+          <>
+            <div className="auth-callback-error-icon" aria-hidden="true">
+              !
+            </div>
+
+            <h1>Đăng nhập chưa hoàn tất</h1>
+
+            <p>{errorText}</p>
+
+            <button
+              type="button"
+              className="auth-callback-back-btn"
+              onClick={() => navigate("/login", { replace: true })}
+            >
+              Quay về đăng nhập
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

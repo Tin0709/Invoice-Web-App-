@@ -4,6 +4,78 @@ import { saveAuthUser } from "../utils/auth";
 import { supabase } from "../utils/supabase";
 import "../styles/login.css";
 
+function EyeIcon() {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        d="M2.5 12C4.6 7.8 8 5.7 12 5.7C16 5.7 19.4 7.8 21.5 12C19.4 16.2 16 18.3 12 18.3C8 18.3 4.6 16.2 2.5 12Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <circle
+        cx="12"
+        cy="12"
+        r="3.1"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+    </svg>
+  );
+}
+
+function EyeOffIcon() {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        d="M3 3L21 21"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M2.5 12C4.6 7.8 8 5.7 12 5.7C16 5.7 19.4 7.8 21.5 12C20.8 13.4 20 14.6 19 15.6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M14.1 14.1C13.6 14.7 12.8 15.1 12 15.1C10.3 15.1 8.9 13.7 8.9 12C8.9 11.2 9.3 10.4 9.9 9.9"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M6.6 6.9C5 8 3.6 9.7 2.5 12C4.6 16.2 8 18.3 12 18.3C13.5 18.3 14.9 18 16.1 17.4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function getFriendlyAuthError(errorOrMessage) {
   const originalMessage =
     typeof errorOrMessage === "string"
@@ -81,8 +153,6 @@ function isExistingAccountFromSignUp(data) {
 
   if (!user) return false;
 
-  // Với Supabase, khi email đã tồn tại, signUp đôi khi không báo lỗi rõ,
-  // nhưng user.identities có thể là mảng rỗng.
   if (Array.isArray(user.identities) && user.identities.length === 0) {
     return true;
   }
@@ -405,7 +475,7 @@ export default function LoginPage() {
                   disabled={isEmailLoading || isGoogleLoading}
                   aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
                 >
-                  {showPassword ? "🙈" : "👁️"}
+                  {showPassword ? <EyeOffIcon /> : <EyeIcon />}
                 </button>
               </div>
             </div>
@@ -437,7 +507,7 @@ export default function LoginPage() {
                       showConfirmPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"
                     }
                   >
-                    {showConfirmPassword ? "🙈" : "👁️"}
+                    {showConfirmPassword ? <EyeOffIcon /> : <EyeIcon />}
                   </button>
                 </div>
               </div>

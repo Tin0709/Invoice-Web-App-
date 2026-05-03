@@ -20,6 +20,7 @@ import {
   deleteRoomOnServer,
   loadDataFromSupabase,
   renameBlockOnServer,
+  renameRoomOnServer,
 } from "../utils/supabaseStorage";
 
 const INVOICE_DRAFT_PREFIX = "motel_receipt_invoice_draft";
@@ -323,6 +324,15 @@ export default function HomePage() {
   const [blockMenuModal, setBlockMenuModal] = useState({
     open: false,
     block: null,
+  });
+
+  const [roomManageModal, setRoomManageModal] = useState({
+    open: false,
+    blockId: null,
+    blockName: "",
+    roomId: null,
+    value: "",
+    roomName: "",
   });
 
   const [confirmState, setConfirmState] = useState({
@@ -670,6 +680,77 @@ export default function HomePage() {
       open: false,
       block: null,
     });
+  };
+
+  const openRoomManageModal = (block, room) => {
+    setRoomManageModal({
+      open: true,
+      blockId: block.id,
+      blockName: block.name || "",
+      roomId: room.id,
+      value: room.roomName || "",
+      roomName: room.roomName || "",
+    });
+  };
+
+  const closeRoomManageModal = () => {
+    setRoomManageModal({
+      open: false,
+      blockId: null,
+      blockName: "",
+      roomId: null,
+      value: "",
+      roomName: "",
+    });
+  };
+
+  const handleRoomManageSubmit = async (event) => {
+    event.preventDefault();
+
+    const newName = roomManageModal.value.trim();
+
+    if (!newName) {
+      showRoomToast("Vui lòng nhập tên phòng.");
+      return;
+    }
+
+    try {
+      await renameRoomOnServer(roomManageModal.roomId, newName);
+
+      setData((prev) => {
+        const nextData = {
+          ...prev,
+          blocks: prev.blocks.map((block) =>
+            block.id === roomManageModal.blockId
+              ? {
+                  ...block,
+                  rooms: block.rooms.map((room) =>
+                    room.id === roomManageModal.roomId
+                      ? { ...room, roomName: newName }
+                      : room
+                  ),
+                }
+              : block
+          ),
+        };
+
+        saveData(nextData);
+        return nextData;
+      });
+
+      closeRoomManageModal();
+      showRoomToast("✅ Đã đổi tên phòng.");
+    } catch (error) {
+      console.error(error);
+      showRoomToast(error.message || "Không thể đổi tên phòng.");
+    }
+  };
+
+  const handleRoomManageDelete = () => {
+    const { blockId, roomId } = roomManageModal;
+
+    closeRoomManageModal();
+    handleDeleteRoom(blockId, roomId);
   };
 
   const handleRenameBlockSubmit = async (event) => {
@@ -1109,24 +1190,55 @@ export default function HomePage() {
                                     className={`room-card ${roomCardStatusClass} ${blockToneClass}`}
                                     key={room.id}
                                   >
-                                    <Link
-                                      className="room-main"
-                                      to={`/invoice/${block.id}/${room.id}${invoiceQuery}`}
-                                    >
-                                      <div className="room-card-head">
+                                    <div className="room-card-top">
+                                      <Link
+                                        className="room-title-area"
+                                        to={`/invoice/${block.id}/${room.id}${invoiceQuery}`}
+                                      >
                                         <h3>{displayRoomName}</h3>
+                                      </Link>
 
+                                      <div className="room-card-actions-compact">
                                         {draft ? (
                                           <span className="room-draft-badge">
-                                            Bản nháp chưa lưu
+                                            Bản nháp
                                           </span>
                                         ) : latestInvoice ? (
                                           <span className="room-saved-badge">
                                             Đã lưu
                                           </span>
                                         ) : null}
-                                      </div>
 
+                                        <button
+                                          type="button"
+                                          className="room-edit-btn"
+                                          onClick={(event) => {
+                                            event.preventDefault();
+                                            event.stopPropagation();
+                                            openRoomManageModal(block, room);
+                                          }}
+                                          aria-label={`Chỉnh sửa ${displayRoomName}`}
+                                        >
+                                          <svg
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="2.2"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            aria-hidden="true"
+                                          >
+                                            <path d="M12 20h9" />
+                                            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" />
+                                          </svg>
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    <Link
+                                      className="room-main room-card-click-area"
+                                      to={`/invoice/${block.id}/${room.id}${invoiceQuery}`}
+                                    >
                                       <div className="room-person-row">
                                         <span
                                           className={`room-block-chip ${blockToneClass}`}
@@ -1137,56 +1249,54 @@ export default function HomePage() {
                                         <p>{displayTenantName}</p>
                                       </div>
 
-                                      <div className="room-meta">
-                                        <span>
-                                          Tiền phòng:{" "}
-                                          {formatCurrency(roomMoney.rentAmount)}{" "}
-                                          đ
-                                        </span>
+                                      <div className="room-money-list">
+                                        <div className="room-money-row">
+                                          <span>Tiền phòng</span>
+                                          <strong>
+                                            {formatCurrency(
+                                              roomMoney.rentAmount
+                                            )}{" "}
+                                            đ
+                                          </strong>
+                                        </div>
 
-                                        <span>
-                                          Tiền khác:{" "}
-                                          {formatCurrency(
-                                            roomMoney.otherAmount
-                                          )}{" "}
-                                          đ
-                                        </span>
+                                        <div className="room-money-row">
+                                          <span>Tiền khác</span>
+                                          <strong>
+                                            {formatCurrency(
+                                              roomMoney.otherAmount
+                                            )}{" "}
+                                            đ
+                                          </strong>
+                                        </div>
 
-                                        <span
-                                          className={
+                                        <div
+                                          className={`room-money-row room-debt-row ${
                                             roomMoney.debtAmount > 0
-                                              ? "room-debt debt"
-                                              : "room-debt ok"
-                                          }
+                                              ? "debt"
+                                              : "ok"
+                                          }`}
                                         >
-                                          Tiền còn thiếu:{" "}
-                                          {formatCurrency(roomMoney.debtAmount)}{" "}
-                                          đ
-                                        </span>
-
-                                        {draft ? (
-                                          <span className="room-draft-note">
-                                            Đang hiển thị thông tin nháp
-                                          </span>
-                                        ) : latestInvoice ? (
-                                          <span className="room-saved-note">
-                                            Đang hiển thị thông tin đã lưu
-                                          </span>
-                                        ) : null}
+                                          <span>Tiền còn thiếu</span>
+                                          <strong>
+                                            {formatCurrency(
+                                              roomMoney.debtAmount
+                                            )}{" "}
+                                            đ
+                                          </strong>
+                                        </div>
                                       </div>
-                                    </Link>
 
-                                    <div className="room-actions">
-                                      <button
-                                        type="button"
-                                        className="danger-btn small-btn"
-                                        onClick={() =>
-                                          handleDeleteRoom(block.id, room.id)
-                                        }
-                                      >
-                                        Xoá
-                                      </button>
-                                    </div>
+                                      {draft ? (
+                                        <div className="room-note-pill draft">
+                                          Đang hiển thị thông tin nháp
+                                        </div>
+                                      ) : latestInvoice ? (
+                                        <div className="room-note-pill saved">
+                                          Đang hiển thị thông tin đã lưu
+                                        </div>
+                                      ) : null}
+                                    </Link>
                                   </div>
                                 );
                               })}
@@ -1392,6 +1502,75 @@ export default function HomePage() {
                 type="button"
                 className="add-room-modal-secondary"
                 onClick={closeRenameBlockModal}
+              >
+                Đóng
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {roomManageModal.open && (
+        <div className="add-room-modal-overlay" onClick={closeRoomManageModal}>
+          <form
+            className="add-room-modal"
+            onSubmit={handleRoomManageSubmit}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="add-room-modal-header">
+              <div>
+                <div className="add-room-modal-badge">Tuỳ chọn phòng</div>
+
+                <h2>{roomManageModal.roomName || "Phòng"}</h2>
+                <p style={{ marginTop: "6px", color: "#6b7280" }}>
+                  {roomManageModal.blockName || ""}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="add-room-modal-x"
+                onClick={closeRoomManageModal}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="add-room-modal-fields">
+              <input
+                type="text"
+                placeholder="Nhập tên phòng mới"
+                value={roomManageModal.value}
+                onChange={(e) =>
+                  setRoomManageModal((prev) => ({
+                    ...prev,
+                    value: e.target.value,
+                  }))
+                }
+                autoFocus
+              />
+            </div>
+
+            <div
+              className="add-room-modal-actions"
+              style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}
+            >
+              <button type="submit" className="add-room-modal-primary">
+                Lưu tên mới
+              </button>
+
+              <button
+                type="button"
+                className="danger-btn"
+                onClick={handleRoomManageDelete}
+              >
+                Xoá phòng
+              </button>
+
+              <button
+                type="button"
+                className="add-room-modal-secondary"
+                onClick={closeRoomManageModal}
               >
                 Đóng
               </button>

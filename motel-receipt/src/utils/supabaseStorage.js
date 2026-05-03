@@ -33,6 +33,7 @@ function calculateInvoiceTotals(invoice) {
 
   const currentMonthTotal =
     rent + trash + elecUsed * elecUnit + waterUsed * waterUnit;
+
   const total = currentMonthTotal + previousDebt;
   const debt = Math.max(0, total - paid);
 
@@ -236,10 +237,16 @@ export async function createBlockOnServer(name) {
 export async function renameBlockOnServer(blockId, newName) {
   const user = await requireUser();
 
+  const blockName = String(newName || "").trim();
+
+  if (!blockName) {
+    throw new Error("Tên dãy không được để trống.");
+  }
+
   const { error } = await supabase
     .from("blocks")
     .update({
-      name: newName.trim(),
+      name: blockName,
       updated_at: new Date().toISOString(),
     })
     .eq("user_id", user.id)
@@ -325,6 +332,31 @@ export async function updateRoomOnServer(blockId, roomId, updates) {
     .update(payload)
     .eq("user_id", user.id)
     .eq("block_id", blockId)
+    .eq("id", roomId);
+
+  if (error) throw error;
+}
+
+export async function renameRoomOnServer(roomId, newRoomName) {
+  const user = await requireUser();
+
+  const roomName = String(newRoomName || "").trim();
+
+  if (!roomId) {
+    throw new Error("Thiếu ID phòng.");
+  }
+
+  if (!roomName) {
+    throw new Error("Tên phòng không được để trống.");
+  }
+
+  const { error } = await supabase
+    .from("rooms")
+    .update({
+      room_name: roomName,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", user.id)
     .eq("id", roomId);
 
   if (error) throw error;

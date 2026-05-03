@@ -1,23 +1,18 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import Invoice from "../components/Invoice";
 import "../styles/invoice.css";
-import { loadData, findBlockById, findRoomById } from "../utils/storage";
+import { findBlockById, findRoomById, saveData } from "../utils/storage";
+import { loadDataFromSupabase } from "../utils/supabaseStorage";
 
 export default function InvoicePage() {
   const { blockId, roomId } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  /*
-    Không gọi loadData() trực tiếp ở ngoài state.
-    Nếu gọi trực tiếp, mỗi lần render lại có thể làm roomData đổi object
-    và gây reset form trong Invoice.
-  */
-  const [pageData] = useState(() => loadData());
-
-  const block = findBlockById(pageData, blockId);
-  const room = findRoomById(pageData, blockId, roomId);
+  const [pageData, setPageData] = useState({ blocks: [] });
+  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [pageError, setPageError] = useState("");
 
   const initialYear = searchParams.get("year");
   const initialMonth = searchParams.get("month");
@@ -31,13 +26,49 @@ export default function InvoicePage() {
     setSaveHandler(() => handler);
   }, []);
 
-  if (!block || !room) {
-    return (
-      <div className="page">
-        <h2>Không tìm thấy phòng</h2>
-      </div>
-    );
-  }
+  useEffect(() => {
+    let mounted = true;
+
+    const loadInvoicePageData = async () => {
+      setIsLoadingData(true);
+      setPageError("");
+
+      try {
+        const serverData = await loadDataFromSupabase();
+
+        if (!mounted) return;
+
+        setPageData(serverData);
+
+        /*
+          Tạm thời sync xuống localStorage để Invoice.jsx hiện tại
+          vẫn có thể dùng các helper cũ nếu chưa chuyển sang Supabase.
+          Sau khi sửa Invoice.jsx lưu trực tiếp lên Supabase,
+          dòng này có thể giữ làm cache hoặc bỏ đi.
+        */
+        saveData(serverData);
+      } catch (error) {
+        console.error("Load invoice page data error:", error);
+
+        if (mounted) {
+          setPageError(error.message || "Không thể tải dữ liệu invoice.");
+        }
+      } finally {
+        if (mounted) {
+          setIsLoadingData(false);
+        }
+      }
+    };
+
+    loadInvoicePageData();
+
+    return () => {
+      mounted = false;
+    };
+  }, [blockId, roomId]);
+
+  const block = findBlockById(pageData, blockId);
+  const room = findRoomById(pageData, blockId, roomId);
 
   const requestGoHome = () => {
     if (isDirty) {
@@ -75,6 +106,68 @@ export default function InvoicePage() {
       pendingAction();
     }
   };
+
+  if (isLoadingData) {
+    return (
+      <div className="page">
+        <div className="invoice-page-top no-print">
+          <button
+            type="button"
+            onClick={() => navigate("/")}
+            className="invoice-back-btn"
+          >
+            ← Quay về trang chủ
+          </button>
+        </div>
+
+        <div className="empty-state card">
+          <p>Đang tải dữ liệu invoice từ Supabase...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (pageError) {
+    return (
+      <div className="page">
+        <div className="invoice-page-top no-print">
+          <button
+            type="button"
+            onClick={() => navigate("/")}
+            className="invoice-back-btn"
+          >
+            ← Quay về trang chủ
+          </button>
+        </div>
+
+        <div className="empty-state card">
+          <h2>Không thể tải dữ liệu</h2>
+          <p>{pageError}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!block || !room) {
+    return (
+      <div className="page">
+        <div className="invoice-page-top no-print">
+          <button
+            type="button"
+            onClick={() => navigate("/")}
+            className="invoice-back-btn"
+          >
+            ← Quay về trang chủ
+          </button>
+        </div>
+
+        <div className="empty-state card">
+          <h2>Không tìm thấy phòng</h2>
+          <p>Phòng này có thể đã bị xoá hoặc không thuộc tài khoản hiện tại.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

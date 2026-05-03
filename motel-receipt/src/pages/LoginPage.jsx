@@ -4,33 +4,90 @@ import { saveAuthUser } from "../utils/auth";
 import { supabase } from "../utils/supabase";
 import "../styles/login.css";
 
-function getFriendlyAuthError(message) {
-  const text = String(message || "").toLowerCase();
+function getFriendlyAuthError(errorOrMessage) {
+  const originalMessage =
+    typeof errorOrMessage === "string"
+      ? errorOrMessage
+      : errorOrMessage?.message || "";
+
+  const text = String(originalMessage || "").toLowerCase();
+
+  console.log("Supabase auth error:", originalMessage);
 
   if (
     text.includes("invalid login credentials") ||
-    text.includes("invalid credentials") ||
-    text.includes("email not confirmed")
+    text.includes("invalid credentials")
   ) {
     return "Tài khoản chưa tồn tại hoặc mật khẩu chưa đúng. Nếu chưa có tài khoản, hãy bấm Đăng ký.";
   }
 
-  if (
-    text.includes("user already registered") ||
-    text.includes("already registered")
-  ) {
-    return "Email này đã được đăng ký. Bạn hãy chuyển sang Đăng nhập.";
+  if (text.includes("email not confirmed")) {
+    return "Email này chưa được xác nhận. Hãy mở Gmail và bấm link xác nhận từ Supabase trước khi đăng nhập.";
   }
 
-  if (text.includes("password")) {
+  if (
+    text.includes("user already registered") ||
+    text.includes("already registered") ||
+    text.includes("already exists") ||
+    text.includes("user already exists")
+  ) {
+    return "Email này đã được đăng ký rồi. Bạn hãy chuyển sang Đăng nhập.";
+  }
+
+  if (
+    text.includes("signup is disabled") ||
+    text.includes("signups not allowed") ||
+    text.includes("email signups are disabled") ||
+    text.includes("signups are disabled")
+  ) {
+    return "Chức năng đăng ký bằng email đang bị tắt trong Supabase. Hãy bật Email provider trong Supabase Auth.";
+  }
+
+  if (
+    text.includes("unable to validate email address") ||
+    text.includes("invalid email") ||
+    text.includes("email address is invalid") ||
+    text.includes("not a valid email")
+  ) {
+    return "Email chưa đúng định dạng hoặc bị Supabase từ chối. Hãy kiểm tra lại email.";
+  }
+
+  if (
+    text.includes("password should be at least") ||
+    text.includes("weak password") ||
+    text.includes("password")
+  ) {
     return "Mật khẩu chưa hợp lệ. Mật khẩu nên có ít nhất 6 ký tự.";
   }
 
-  if (text.includes("email")) {
-    return "Email chưa hợp lệ hoặc chưa được xác nhận.";
+  if (
+    text.includes("rate limit") ||
+    text.includes("security purposes") ||
+    text.includes("too many requests") ||
+    text.includes("over_email_send_rate_limit")
+  ) {
+    return "Bạn thao tác quá nhanh. Hãy chờ khoảng 1 phút rồi thử lại.";
   }
 
-  return message || "Có lỗi xảy ra. Vui lòng thử lại.";
+  if (text.includes("database error saving new user")) {
+    return "Supabase bị lỗi khi tạo tài khoản mới. Hãy kiểm tra bảng profiles, trigger hoặc policy liên quan đến user mới.";
+  }
+
+  return originalMessage || "Có lỗi xảy ra. Vui lòng thử lại.";
+}
+
+function isExistingAccountFromSignUp(data) {
+  const user = data?.user;
+
+  if (!user) return false;
+
+  // Với Supabase, khi email đã tồn tại, signUp đôi khi không báo lỗi rõ,
+  // nhưng user.identities có thể là mảng rỗng.
+  if (Array.isArray(user.identities) && user.identities.length === 0) {
+    return true;
+  }
+
+  return false;
 }
 
 function saveSupabaseUser(user, provider = "email") {
@@ -55,10 +112,13 @@ export default function LoginPage() {
     password: "",
     confirmPassword: "",
   });
+
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isEmailLoading, setIsEmailLoading] = useState(false);
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -68,7 +128,10 @@ export default function LoginPage() {
     const checkSupabaseSession = async () => {
       const { data, error } = await supabase.auth.getSession();
 
-      if (error) return;
+      if (error) {
+        console.log("Check session error:", error.message);
+        return;
+      }
 
       const session = data?.session;
       const user = session?.user;
@@ -76,7 +139,6 @@ export default function LoginPage() {
       if (!user) return;
 
       saveSupabaseUser(user, user.app_metadata?.provider || "email");
-
       navigate("/", { replace: true });
     };
 
@@ -90,7 +152,6 @@ export default function LoginPage() {
       if (!user) return;
 
       saveSupabaseUser(user, user.app_metadata?.provider || "email");
-
       navigate("/", { replace: true });
     });
 
@@ -107,6 +168,17 @@ export default function LoginPage() {
 
     setError("");
     setMessage("");
+  };
+
+  const resetForm = () => {
+    setForm({
+      email: "",
+      password: "",
+      confirmPassword: "",
+    });
+
+    setShowPassword(false);
+    setShowConfirmPassword(false);
   };
 
   const handleGoogleLogin = async () => {
@@ -126,7 +198,7 @@ export default function LoginPage() {
     });
 
     if (error) {
-      setError(getFriendlyAuthError(error.message));
+      setError(getFriendlyAuthError(error));
       setIsGoogleLoading(false);
     }
   };
@@ -134,7 +206,7 @@ export default function LoginPage() {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    const email = form.email.trim();
+    const email = form.email.trim().toLowerCase();
     const password = form.password.trim();
     const confirmPassword = form.confirmPassword.trim();
 
@@ -146,7 +218,7 @@ export default function LoginPage() {
       return;
     }
 
-    if (!email.includes("@")) {
+    if (!email.includes("@") || !email.includes(".")) {
       setError("Email chưa đúng định dạng.");
       return;
     }
@@ -201,6 +273,13 @@ export default function LoginPage() {
         throw error;
       }
 
+      if (isExistingAccountFromSignUp(data)) {
+        setError(
+          "Email này đã được đăng ký rồi. Bạn hãy chuyển sang Đăng nhập."
+        );
+        return;
+      }
+
       const user = data?.user;
       const session = data?.session;
 
@@ -211,17 +290,20 @@ export default function LoginPage() {
       }
 
       setMessage(
-        "Đã tạo tài khoản. Nếu Supabase yêu cầu xác nhận email, bạn hãy kiểm tra hộp thư trước khi đăng nhập."
+        "Đã tạo tài khoản. Nếu Supabase yêu cầu xác nhận email, hãy mở Gmail và bấm link xác nhận trước khi đăng nhập."
       );
+
       setMode("login");
-      setForm((prev) => ({
-        ...prev,
+      setForm({
+        email,
         password: "",
         confirmPassword: "",
-      }));
+      });
+      setShowPassword(false);
+      setShowConfirmPassword(false);
     } catch (error) {
       console.error("Email auth error:", error);
-      setError(getFriendlyAuthError(error.message));
+      setError(getFriendlyAuthError(error));
     } finally {
       setIsEmailLoading(false);
     }
@@ -295,7 +377,7 @@ export default function LoginPage() {
                 type="email"
                 placeholder="VD: user@gmail.com"
                 value={form.email}
-                onChange={(e) => updateField("email", e.target.value)}
+                onChange={(event) => updateField("email", event.target.value)}
                 autoComplete="email"
                 disabled={isEmailLoading || isGoogleLoading}
               />
@@ -309,7 +391,9 @@ export default function LoginPage() {
                   type={showPassword ? "text" : "password"}
                   placeholder="Nhập mật khẩu"
                   value={form.password}
-                  onChange={(e) => updateField("password", e.target.value)}
+                  onChange={(event) =>
+                    updateField("password", event.target.value)
+                  }
                   autoComplete={isLogin ? "current-password" : "new-password"}
                   disabled={isEmailLoading || isGoogleLoading}
                 />
@@ -335,8 +419,8 @@ export default function LoginPage() {
                     type={showConfirmPassword ? "text" : "password"}
                     placeholder="Nhập lại mật khẩu"
                     value={form.confirmPassword}
-                    onChange={(e) =>
-                      updateField("confirmPassword", e.target.value)
+                    onChange={(event) =>
+                      updateField("confirmPassword", event.target.value)
                     }
                     autoComplete="new-password"
                     disabled={isEmailLoading || isGoogleLoading}
@@ -387,14 +471,7 @@ export default function LoginPage() {
                 setMode(isLogin ? "register" : "login");
                 setError("");
                 setMessage("");
-                setShowPassword(false);
-                setShowConfirmPassword(false);
-
-                setForm({
-                  email: "",
-                  password: "",
-                  confirmPassword: "",
-                });
+                resetForm();
               }}
             >
               {isLogin ? "Đăng ký" : "Đăng nhập"}

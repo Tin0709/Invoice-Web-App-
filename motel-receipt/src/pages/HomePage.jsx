@@ -859,11 +859,15 @@ export default function HomePage() {
                                 const displayTenantName =
                                   draft?.meta?.tenant || room.tenantName;
 
+                                const roomCardStatusClass = draft
+                                  ? "room-card-draft"
+                                  : latestInvoice
+                                  ? "room-card-saved"
+                                  : "";
+
                                 return (
                                   <div
-                                    className={`room-card ${
-                                      draft ? "room-card-draft" : ""
-                                    }`}
+                                    className={`room-card ${roomCardStatusClass}`}
                                     key={room.id}
                                   >
                                     <Link
@@ -873,11 +877,15 @@ export default function HomePage() {
                                       <div className="room-card-head">
                                         <h3>{displayRoomName}</h3>
 
-                                        {draft && (
+                                        {draft ? (
                                           <span className="room-draft-badge">
                                             Bản nháp chưa lưu
                                           </span>
-                                        )}
+                                        ) : latestInvoice ? (
+                                          <span className="room-saved-badge">
+                                            Đã lưu
+                                          </span>
+                                        ) : null}
                                       </div>
 
                                       <p>{displayTenantName}</p>
@@ -909,11 +917,15 @@ export default function HomePage() {
                                           đ
                                         </span>
 
-                                        {draft && (
+                                        {draft ? (
                                           <span className="room-draft-note">
                                             Đang hiển thị thông tin nháp
                                           </span>
-                                        )}
+                                        ) : latestInvoice ? (
+                                          <span className="room-saved-note">
+                                            Đang hiển thị thông tin đã lưu
+                                          </span>
+                                        ) : null}
                                       </div>
                                     </Link>
 

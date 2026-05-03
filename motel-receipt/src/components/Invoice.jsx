@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import "../styles/invoice.css";
 import {
@@ -743,13 +744,15 @@ export default function Invoice({
 
   return (
     <>
-      {saveMessage && (
-        <div className="save-toast no-print" role="status">
-          {saveMessage === "Đã lưu phiếu thành công."
-            ? "✅ Đã lưu phiếu thành công."
-            : saveMessage}
-        </div>
-      )}
+      {saveMessage &&
+        createPortal(
+          <div className="save-toast no-print" role="status">
+            {saveMessage === "Đã lưu phiếu thành công."
+              ? "✅ Đã lưu phiếu thành công."
+              : saveMessage}
+          </div>,
+          document.body
+        )}
 
       <div className="topbar no-print">
         <div className="actions actions-only">

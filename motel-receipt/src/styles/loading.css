@@ -1,0 +1,167 @@
+/* =========================
+   LOADING UI
+========================= */
+
+.loading-card {
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 24px;
+  padding: 28px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.06);
+  animation: loadingFadeIn 0.25s ease-out;
+}
+
+.loading-spinner-wrap {
+  width: 54px;
+  height: 54px;
+  border-radius: 999px;
+  background: #eef2ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.loading-spinner {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: 4px solid #c7d2fe;
+  border-top-color: #4f46e5;
+  animation: loadingSpin 0.8s linear infinite;
+}
+
+.loading-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.loading-content h3 {
+  margin: 0 0 6px;
+  color: #111827;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.loading-content p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 15px;
+}
+
+.loading-skeleton-list {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.loading-skeleton-list span {
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #eef2ff 0%, #f8fafc 45%, #eef2ff 100%);
+  background-size: 200% 100%;
+  animation: loadingSkeleton 1.1s ease-in-out infinite;
+}
+
+.loading-skeleton-list span:nth-child(1) {
+  width: 72%;
+}
+
+.loading-skeleton-list span:nth-child(2) {
+  width: 48%;
+}
+
+.loading-skeleton-list span:nth-child(3) {
+  width: 62%;
+}
+
+/* Content appears smoothly after loading */
+.content-fade-in {
+  animation: contentFadeUp 0.35s ease-out both;
+}
+
+.content-fade-in-slow {
+  animation: contentFadeUp 0.48s ease-out both;
+}
+
+@keyframes loadingSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes loadingSkeleton {
+  0% {
+    background-position: 180% 0;
+  }
+
+  100% {
+    background-position: -180% 0;
+  }
+}
+
+@keyframes loadingFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes contentFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 640px) {
+  .loading-card {
+    align-items: flex-start;
+    padding: 22px;
+  }
+
+  .loading-spinner-wrap {
+    width: 46px;
+    height: 46px;
+  }
+
+  .loading-spinner {
+    width: 22px;
+    height: 22px;
+    border-width: 3px;
+  }
+
+  .loading-content h3 {
+    font-size: 18px;
+  }
+
+  .loading-content p {
+    font-size: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-spinner,
+  .loading-skeleton-list span,
+  .loading-card,
+  .content-fade-in,
+  .content-fade-in-slow {
+    animation: none;
+  }
+}

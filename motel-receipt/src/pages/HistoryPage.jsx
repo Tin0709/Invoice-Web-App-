@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import LoadingCard from "../components/LoadingCard";
 import "../styles/history.css";
+import "../styles/loading.css";
 import { formatCurrency, getAllInvoicesFlat, saveData } from "../utils/storage";
 import {
   deleteInvoiceOnServer,
@@ -256,7 +258,7 @@ export default function HistoryPage() {
     <>
       <div className="history-page">
         <div className="history-shell">
-          <div className="history-topbar">
+          <div className="history-topbar content-fade-in">
             <div>
               <Link className="history-back" to="/">
                 ← Quay về trang chủ
@@ -271,19 +273,19 @@ export default function HistoryPage() {
           </div>
 
           {pageError && (
-            <div className="history-empty-card">
+            <div className="history-empty-card content-fade-in">
               <h3>Không thể tải dữ liệu</h3>
               <p>{pageError}</p>
             </div>
           )}
 
           {isLoadingData ? (
-            <div className="history-empty-card">
-              <h3>Đang tải lịch sử</h3>
-              <p>Đang lấy dữ liệu từ Supabase...</p>
-            </div>
+            <LoadingCard
+              title="Đang tải lịch sử"
+              message="Đang lấy toàn bộ phiếu đã lưu từ Supabase..."
+            />
           ) : (
-            <>
+            <div className="content-fade-in">
               {invoices.length > 0 && (
                 <section className="history-filter-card">
                   <div className="history-filter-head">
@@ -399,7 +401,7 @@ export default function HistoryPage() {
                   <p>Thử xoá bộ lọc hoặc nhập từ khoá khác.</p>
                 </div>
               ) : (
-                <div className="timeline-groups">
+                <div className="timeline-groups content-fade-in-slow">
                   {grouped.map((group) => (
                     <section className="timeline-group" key={group.key}>
                       <div className="timeline-group-header">
@@ -469,7 +471,7 @@ export default function HistoryPage() {
                   ))}
                 </div>
               )}
-            </>
+            </div>
           )}
         </div>
       </div>

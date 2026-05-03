@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import AccountMenu from "../components/AccountMenu";
+import LoadingCard from "../components/LoadingCard";
 import "../styles/home.css";
 import "../styles/invoice.css";
+import "../styles/loading.css";
 import {
   formatCurrency,
   getAllInvoicesFlat,
@@ -117,8 +119,7 @@ export default function HomePage() {
 
       setData(serverData);
 
-      // Tạm thời sync xuống localStorage để các trang Invoice/History cũ vẫn đọc được.
-      // Sau khi mình chuyển InvoicePage và HistoryPage sang Supabase thì có thể bỏ dòng này.
+      // Sync xuống localStorage để những helper cũ vẫn đọc được cache mới nhất.
       saveData(serverData);
 
       setExpandedBlockId((currentBlockId) => {
@@ -525,185 +526,194 @@ export default function HomePage() {
           </section>
 
           {pageError && (
-            <section className="card empty-state">
+            <section className="card empty-state content-fade-in">
               <p>{pageError}</p>
             </section>
           )}
 
           {isLoadingData ? (
-            <section className="card empty-state">
-              <p>Đang tải dữ liệu từ Supabase...</p>
-            </section>
+            <LoadingCard
+              title="Đang tải phòng trọ"
+              message="Đang lấy dữ liệu dãy, phòng và phiếu gần đây từ Supabase..."
+            />
           ) : (
-            <section className="blocks-section">
-              {filteredBlocks.length === 0 ? (
-                <div className="card empty-state">
-                  <p>Chưa có dữ liệu phù hợp.</p>
-                </div>
-              ) : (
-                filteredBlocks.map((block) => {
-                  const isOpen = expandedBlockId === block.id;
+            <div className="content-fade-in">
+              <section className="blocks-section">
+                {filteredBlocks.length === 0 ? (
+                  <div className="card empty-state">
+                    <p>Chưa có dữ liệu phù hợp.</p>
+                  </div>
+                ) : (
+                  filteredBlocks.map((block) => {
+                    const isOpen = expandedBlockId === block.id;
 
-                  return (
-                    <div
-                      className={`block-card card ${
-                        isOpen ? "active-block-card" : ""
-                      }`}
-                      key={block.id}
-                    >
-                      <div className="block-header">
-                        <button
-                          type="button"
-                          className="block-title-button"
-                          onClick={() =>
-                            setExpandedBlockId(isOpen ? null : block.id)
-                          }
-                        >
-                          <span>{block.name}</span>
-                        </button>
-
-                        <div className="block-actions">
-                          <span className="room-count">
-                            {block.rooms.length} phòng
-                          </span>
-
+                    return (
+                      <div
+                        className={`block-card card ${
+                          isOpen ? "active-block-card" : ""
+                        }`}
+                        key={block.id}
+                      >
+                        <div className="block-header">
                           <button
                             type="button"
-                            className="block-menu-btn"
-                            onClick={() => openBlockMenuModal(block)}
-                            aria-label={`Mở tuỳ chọn cho ${block.name}`}
+                            className="block-title-button"
+                            onClick={() =>
+                              setExpandedBlockId(isOpen ? null : block.id)
+                            }
                           >
-                            ⋯
+                            <span>{block.name}</span>
                           </button>
-                        </div>
-                      </div>
 
-                      {isOpen && (
-                        <div className="block-content">
-                          <div className="room-grid">
-                            {block.rooms.map((room) => {
-                              const latestInvoice = getLatestInvoice(room);
-                              const roomMoney = getRoomCardMoney(
-                                room,
-                                latestInvoice
-                              );
-
-                              const invoiceQuery = latestInvoice
-                                ? `?year=${latestInvoice.year}&month=${latestInvoice.month}`
-                                : "";
-
-                              return (
-                                <div className="room-card" key={room.id}>
-                                  <Link
-                                    className="room-main"
-                                    to={`/invoice/${block.id}/${room.id}${invoiceQuery}`}
-                                  >
-                                    <h3>{room.roomName}</h3>
-                                    <p>{room.tenantName}</p>
-
-                                    <div className="room-meta">
-                                      <span>
-                                        Tiền phòng:{" "}
-                                        {formatCurrency(roomMoney.rentAmount)} đ
-                                      </span>
-
-                                      <span>
-                                        Tiền khác:{" "}
-                                        {formatCurrency(roomMoney.otherAmount)}{" "}
-                                        đ
-                                      </span>
-
-                                      <span
-                                        className={
-                                          roomMoney.debtAmount > 0
-                                            ? "room-debt debt"
-                                            : "room-debt ok"
-                                        }
-                                      >
-                                        Tiền còn thiếu:{" "}
-                                        {formatCurrency(roomMoney.debtAmount)} đ
-                                      </span>
-                                    </div>
-                                  </Link>
-
-                                  <div className="room-actions">
-                                    <button
-                                      type="button"
-                                      className="danger-btn small-btn"
-                                      onClick={() =>
-                                        handleDeleteRoom(block.id, room.id)
-                                      }
-                                    >
-                                      Xoá
-                                    </button>
-                                  </div>
-                                </div>
-                              );
-                            })}
+                          <div className="block-actions">
+                            <span className="room-count">
+                              {block.rooms.length} phòng
+                            </span>
 
                             <button
                               type="button"
-                              className="add-room-tile"
-                              onClick={() => setOpenAddRoomBlockId(block.id)}
+                              className="block-menu-btn"
+                              onClick={() => openBlockMenuModal(block)}
+                              aria-label={`Mở tuỳ chọn cho ${block.name}`}
                             >
-                              <span className="add-room-plus">+</span>
-                              <span className="add-room-text">Thêm phòng</span>
+                              ⋯
                             </button>
-
-                            {block.rooms.length === 0 && (
-                              <div className="empty-room">
-                                Chưa có phòng nào trong dãy này.
-                              </div>
-                            )}
                           </div>
                         </div>
-                      )}
-                    </div>
-                  );
-                })
-              )}
-            </section>
-          )}
 
-          <section className="history-section card">
-            <div className="history-head">
-              <div className="section-title">
-                <h2>Lịch sử phiếu gần đây</h2>
-              </div>
+                        {isOpen && (
+                          <div className="block-content">
+                            <div className="room-grid">
+                              {block.rooms.map((room) => {
+                                const latestInvoice = getLatestInvoice(room);
+                                const roomMoney = getRoomCardMoney(
+                                  room,
+                                  latestInvoice
+                                );
 
-              <Link className="home-history-link" to="/history">
-                Xem tất cả / Quản lí lịch sử
-              </Link>
-            </div>
+                                const invoiceQuery = latestInvoice
+                                  ? `?year=${latestInvoice.year}&month=${latestInvoice.month}`
+                                  : "";
 
-            {recentInvoices.length === 0 ? (
-              <p className="history-empty">Chưa có invoice nào được lưu.</p>
-            ) : (
-              <div className="history-list">
-                {recentInvoices.map((item, index) => (
-                  <Link
-                    key={`${item.blockId}-${item.roomId}-${item.month}-${item.year}-${index}`}
-                    className="history-item"
-                    to={`/invoice/${item.blockId}/${item.roomId}?year=${item.year}&month=${item.month}`}
-                  >
-                    <div>
-                      <strong>
-                        {item.month}/{item.year}
-                      </strong>
+                                return (
+                                  <div className="room-card" key={room.id}>
+                                    <Link
+                                      className="room-main"
+                                      to={`/invoice/${block.id}/${room.id}${invoiceQuery}`}
+                                    >
+                                      <h3>{room.roomName}</h3>
+                                      <p>{room.tenantName}</p>
 
-                      <span>
-                        {item.blockName} - {item.roomName}
-                      </span>
-                    </div>
+                                      <div className="room-meta">
+                                        <span>
+                                          Tiền phòng:{" "}
+                                          {formatCurrency(roomMoney.rentAmount)}{" "}
+                                          đ
+                                        </span>
 
-                    <div>
-                      <span>{item.tenantName}</span>
-                    </div>
+                                        <span>
+                                          Tiền khác:{" "}
+                                          {formatCurrency(
+                                            roomMoney.otherAmount
+                                          )}{" "}
+                                          đ
+                                        </span>
+
+                                        <span
+                                          className={
+                                            roomMoney.debtAmount > 0
+                                              ? "room-debt debt"
+                                              : "room-debt ok"
+                                          }
+                                        >
+                                          Tiền còn thiếu:{" "}
+                                          {formatCurrency(roomMoney.debtAmount)}{" "}
+                                          đ
+                                        </span>
+                                      </div>
+                                    </Link>
+
+                                    <div className="room-actions">
+                                      <button
+                                        type="button"
+                                        className="danger-btn small-btn"
+                                        onClick={() =>
+                                          handleDeleteRoom(block.id, room.id)
+                                        }
+                                      >
+                                        Xoá
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+
+                              <button
+                                type="button"
+                                className="add-room-tile"
+                                onClick={() => setOpenAddRoomBlockId(block.id)}
+                              >
+                                <span className="add-room-plus">+</span>
+                                <span className="add-room-text">
+                                  Thêm phòng
+                                </span>
+                              </button>
+
+                              {block.rooms.length === 0 && (
+                                <div className="empty-room">
+                                  Chưa có phòng nào trong dãy này.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </section>
+
+              <section className="history-section card content-fade-in-slow">
+                <div className="history-head">
+                  <div className="section-title">
+                    <h2>Lịch sử phiếu gần đây</h2>
+                  </div>
+
+                  <Link className="home-history-link" to="/history">
+                    Xem tất cả / Quản lí lịch sử
                   </Link>
-                ))}
-              </div>
-            )}
-          </section>
+                </div>
+
+                {recentInvoices.length === 0 ? (
+                  <p className="history-empty">Chưa có invoice nào được lưu.</p>
+                ) : (
+                  <div className="history-list">
+                    {recentInvoices.map((item, index) => (
+                      <Link
+                        key={`${item.blockId}-${item.roomId}-${item.month}-${item.year}-${index}`}
+                        className="history-item"
+                        to={`/invoice/${item.blockId}/${item.roomId}?year=${item.year}&month=${item.month}`}
+                      >
+                        <div>
+                          <strong>
+                            {item.month}/{item.year}
+                          </strong>
+
+                          <span>
+                            {item.blockName} - {item.roomName}
+                          </span>
+                        </div>
+
+                        <div>
+                          <span>{item.tenantName}</span>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </section>
+            </div>
+          )}
         </div>
       </div>
 

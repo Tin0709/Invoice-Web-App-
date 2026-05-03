@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import Invoice from "../components/Invoice";
+import LoadingCard from "../components/LoadingCard";
 import "../styles/invoice.css";
+import "../styles/loading.css";
 import { findBlockById, findRoomById, saveData } from "../utils/storage";
 import { loadDataFromSupabase } from "../utils/supabaseStorage";
 
@@ -40,12 +42,7 @@ export default function InvoicePage() {
 
         setPageData(serverData);
 
-        /*
-          Tạm thời sync xuống localStorage để Invoice.jsx hiện tại
-          vẫn có thể dùng các helper cũ nếu chưa chuyển sang Supabase.
-          Sau khi sửa Invoice.jsx lưu trực tiếp lên Supabase,
-          dòng này có thể giữ làm cache hoặc bỏ đi.
-        */
+        // Sync xuống localStorage để Invoice.jsx đọc số cũ/tháng trước ổn định.
         saveData(serverData);
       } catch (error) {
         console.error("Load invoice page data error:", error);
@@ -120,16 +117,17 @@ export default function InvoicePage() {
           </button>
         </div>
 
-        <div className="empty-state card">
-          <p>Đang tải dữ liệu invoice từ Supabase...</p>
-        </div>
+        <LoadingCard
+          title="Đang tải phiếu thu"
+          message="Đang lấy thông tin phòng, chỉ số tháng trước và lịch sử phiếu..."
+        />
       </div>
     );
   }
 
   if (pageError) {
     return (
-      <div className="page">
+      <div className="page content-fade-in">
         <div className="invoice-page-top no-print">
           <button
             type="button"
@@ -150,7 +148,7 @@ export default function InvoicePage() {
 
   if (!block || !room) {
     return (
-      <div className="page">
+      <div className="page content-fade-in">
         <div className="invoice-page-top no-print">
           <button
             type="button"
@@ -171,7 +169,7 @@ export default function InvoicePage() {
 
   return (
     <>
-      <div className="page">
+      <div className="page content-fade-in">
         <div className="invoice-page-top no-print">
           <button
             type="button"

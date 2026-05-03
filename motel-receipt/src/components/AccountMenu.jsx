@@ -6,6 +6,8 @@ import { supabase } from "../utils/supabase";
 
 const AVATAR_BUCKET = "avatars";
 
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 function getProfileKey(user) {
   return `motel_receipt_profile_${user?.id || user?.email || "guest"}`;
 }
@@ -115,6 +117,7 @@ export default function AccountMenu() {
   const [open, setOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [saving, setSaving] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const [authUser, setAuthUser] = useState(() => initialUser);
   const [profile, setProfile] = useState(() => loadLocalProfile(initialUser));
@@ -200,12 +203,16 @@ export default function AccountMenu() {
   };
 
   const openAccountModal = () => {
+    if (isLoggingOut) return;
+
     setDraftProfile(profile);
     setDraftAvatarFile(null);
     setOpen(true);
   };
 
   const closeAccountModal = () => {
+    if (isLoggingOut) return;
+
     setDraftProfile(profile);
     setDraftAvatarFile(null);
     setOpen(false);
@@ -219,6 +226,7 @@ export default function AccountMenu() {
   };
 
   const handleAvatarClick = () => {
+    if (isLoggingOut) return;
     fileInputRef.current?.click();
   };
 
@@ -300,10 +308,27 @@ export default function AccountMenu() {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut({ scope: "local" });
-    logoutUser();
+    if (isLoggingOut) return;
 
-    navigate("/login", { replace: true });
+    try {
+      setIsLoggingOut(true);
+      setToastMessage("");
+
+      // Đóng modal tài khoản để overlay đăng xuất hiện rõ hơn.
+      setOpen(false);
+
+      // Delay nhẹ để người dùng thấy hiệu ứng chuyển trang.
+      await wait(750);
+
+      await supabase.auth.signOut({ scope: "local" });
+      logoutUser();
+
+      navigate("/login", { replace: true });
+    } catch (error) {
+      console.error("Logout error:", error);
+      setIsLoggingOut(false);
+      showToast(error.message || "❌ Không thể đăng xuất.");
+    }
   };
 
   return (
@@ -316,10 +341,23 @@ export default function AccountMenu() {
           document.body
         )}
 
+      {isLoggingOut &&
+        createPortal(
+          <div className="logout-transition-overlay" role="status">
+            <div className="logout-transition-card">
+              <div className="logout-spinner" />
+              <h3>Đang đăng xuất</h3>
+              <p>Đang chuyển về trang đăng nhập...</p>
+            </div>
+          </div>,
+          document.body
+        )}
+
       <button
         type="button"
         className="account-trigger"
         onClick={openAccountModal}
+        disabled={isLoggingOut}
       >
         <span className="account-avatar">
           {avatar ? <img src={avatar} alt="Avatar" /> : firstLetter}
@@ -348,6 +386,7 @@ export default function AccountMenu() {
                 className="account-close-btn"
                 onClick={closeAccountModal}
                 aria-label="Đóng"
+                disabled={isLoggingOut}
               >
                 ×
               </button>
@@ -359,6 +398,7 @@ export default function AccountMenu() {
                 className="account-avatar-large"
                 onClick={handleAvatarClick}
                 aria-label="Đổi ảnh đại diện"
+                disabled={isLoggingOut}
               >
                 {draftAvatar ? (
                   <img src={draftAvatar} alt="Avatar" />
@@ -375,6 +415,7 @@ export default function AccountMenu() {
                   type="button"
                   className="account-change-avatar-btn"
                   onClick={handleAvatarClick}
+                  disabled={isLoggingOut}
                 >
                   Đổi ảnh đại diện
                 </button>
@@ -397,6 +438,7 @@ export default function AccountMenu() {
                 value={draftProfile.name || ""}
                 placeholder={authUser?.name || "Nhập tên hiển thị"}
                 onChange={(event) => handleNameChange(event.target.value)}
+                disabled={isLoggingOut}
               />
             </div>
 
@@ -411,7 +453,7 @@ export default function AccountMenu() {
               type="button"
               className="account-confirm-btn"
               onClick={handleConfirmProfile}
-              disabled={saving}
+              disabled={saving || isLoggingOut}
             >
               {saving ? "Đang lưu..." : "Xác nhận"}
             </button>
@@ -420,8 +462,9 @@ export default function AccountMenu() {
               type="button"
               className="account-logout-btn"
               onClick={handleLogout}
+              disabled={isLoggingOut}
             >
-              Đăng xuất
+              {isLoggingOut ? "Đang đăng xuất..." : "Đăng xuất"}
             </button>
           </section>
         </div>

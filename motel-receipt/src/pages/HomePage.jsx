@@ -24,6 +24,7 @@ import {
 
 const INVOICE_DRAFT_PREFIX = "motel_receipt_invoice_draft";
 const DRAFT_NOTICE_KEY = "motel_receipt_invoice_draft_notice";
+const LAST_OPEN_BLOCK_KEY = "motel_receipt_last_open_block";
 
 function formatMoneyInput(value) {
   const raw = String(value ?? "").replace(/[^\d]/g, "");
@@ -517,12 +518,18 @@ export default function HomePage() {
 
       saveData(serverData);
 
+      const preferredBlockId =
+        location.state?.openBlockId ||
+        localStorage.getItem(LAST_OPEN_BLOCK_KEY);
+
       setExpandedBlockId((currentBlockId) => {
-        const currentStillExists = serverData.blocks.some(
-          (block) => block.id === currentBlockId
+        const wantedBlockId = preferredBlockId || currentBlockId;
+
+        const wantedStillExists = serverData.blocks.some(
+          (block) => block.id === wantedBlockId
         );
 
-        if (currentStillExists) return currentBlockId;
+        if (wantedStillExists) return wantedBlockId;
 
         return serverData.blocks.length > 0 ? serverData.blocks[0].id : null;
       });
@@ -706,6 +713,8 @@ export default function HomePage() {
       });
 
       setExpandedBlockId(newBlock.id);
+      setExpandedBlockId(newBlock.id);
+      localStorage.setItem(LAST_OPEN_BLOCK_KEY, newBlock.id);
       setOpenAddRoomBlockId(null);
       setNewBlockName("");
 
@@ -1022,9 +1031,20 @@ export default function HomePage() {
                           <button
                             type="button"
                             className="block-title-button"
-                            onClick={() =>
-                              setExpandedBlockId(isOpen ? null : block.id)
-                            }
+                            onClick={() => {
+                              const nextBlockId = isOpen ? null : block.id;
+
+                              setExpandedBlockId(nextBlockId);
+
+                              if (nextBlockId) {
+                                localStorage.setItem(
+                                  LAST_OPEN_BLOCK_KEY,
+                                  nextBlockId
+                                );
+                              } else {
+                                localStorage.removeItem(LAST_OPEN_BLOCK_KEY);
+                              }
+                            }}
                           >
                             <span>{block.name}</span>
                           </button>

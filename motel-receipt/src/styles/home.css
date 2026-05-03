@@ -1486,3 +1486,80 @@
     transition: none;
   }
 }
+/* =========================
+   LOGOUT TRANSITION
+========================= */
+
+.logout-transition-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.52);
+  backdrop-filter: blur(8px);
+  animation: logoutOverlayFadeIn 0.22s ease both;
+}
+
+.logout-transition-card {
+  width: min(360px, calc(100vw - 36px));
+  border-radius: 28px;
+  background: #ffffff;
+  padding: 34px 28px;
+  text-align: center;
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.28);
+  animation: logoutCardPop 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.logout-transition-card h3 {
+  margin: 18px 0 8px;
+  color: var(--text-main);
+  font-size: 24px;
+  font-weight: 950;
+}
+
+.logout-transition-card p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.logout-spinner {
+  width: 54px;
+  height: 54px;
+  margin: 0 auto;
+  border-radius: 999px;
+  border: 5px solid #e0e7ff;
+  border-top-color: var(--primary);
+  animation: logoutSpin 0.8s linear infinite;
+}
+
+@keyframes logoutOverlayFadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes logoutCardPop {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes logoutSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}

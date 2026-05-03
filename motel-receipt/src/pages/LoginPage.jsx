@@ -166,7 +166,7 @@ export default function LoginPage() {
           <div className="login-card-head">
             <h2>{isLogin ? "Đăng nhập" : "Tạo tài khoản"}</h2>
 
-            <p>
+            <p className="login-subtitle">
               {isLogin
                 ? "Nhập thông tin để vào trang quản lý."
                 : "Tạo tài khoản mới để sử dụng hệ thống."}
@@ -180,7 +180,9 @@ export default function LoginPage() {
             disabled={isGoogleLoading}
           >
             <span className="google-icon">G</span>
-            {isGoogleLoading ? "Đang mở Google..." : "Tiếp tục với Google"}
+            <span>
+              {isGoogleLoading ? "Đang mở Google..." : "Tiếp tục với Google"}
+            </span>
           </button>
 
           <div className="login-divider">
@@ -198,6 +200,7 @@ export default function LoginPage() {
                 placeholder="VD: user@gmail.com"
                 value={form.email}
                 onChange={(e) => updateField("email", e.target.value)}
+                autoComplete="email"
               />
             </div>
 
@@ -209,6 +212,7 @@ export default function LoginPage() {
                 placeholder="Nhập mật khẩu"
                 value={form.password}
                 onChange={(e) => updateField("password", e.target.value)}
+                autoComplete={isLogin ? "current-password" : "new-password"}
               />
             </div>
 
@@ -223,6 +227,7 @@ export default function LoginPage() {
                   onChange={(e) =>
                     updateField("confirmPassword", e.target.value)
                   }
+                  autoComplete="new-password"
                 />
               </div>
             )}
@@ -235,7 +240,7 @@ export default function LoginPage() {
           </form>
 
           <div className="login-switch">
-            {isLogin ? "Chưa có tài khoản?" : "Đã có tài khoản?"}
+            <span>{isLogin ? "Chưa có tài khoản?" : "Đã có tài khoản?"}</span>
 
             <button
               type="button"

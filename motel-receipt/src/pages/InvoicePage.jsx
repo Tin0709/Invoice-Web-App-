@@ -19,10 +19,26 @@ export default function InvoicePage() {
   const initialYear = searchParams.get("year");
   const initialMonth = searchParams.get("month");
 
+  useEffect(() => {
+    if (blockId) {
+      localStorage.setItem(LAST_OPEN_BLOCK_KEY, blockId);
+    }
+  }, [blockId]);
+
+  const goHomeWithCurrentBlock = () => {
+    navigate("/", {
+      state: {
+        openBlockId: blockId,
+      },
+    });
+  };
+
   const [isDirty, setIsDirty] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [saveHandler, setSaveHandler] = useState(null);
+
+  const LAST_OPEN_BLOCK_KEY = "motel_receipt_last_open_block";
 
   const registerSaveHandler = useCallback((handler) => {
     setSaveHandler(() => handler);
@@ -69,12 +85,12 @@ export default function InvoicePage() {
 
   const requestGoHome = () => {
     if (isDirty) {
-      setPendingAction(() => () => navigate("/"));
+      setPendingAction(() => goHomeWithCurrentBlock);
       setShowLeaveModal(true);
       return;
     }
 
-    navigate("/");
+    goHomeWithCurrentBlock();
   };
 
   const handleDiscard = () => {
@@ -110,7 +126,7 @@ export default function InvoicePage() {
         <div className="invoice-page-top no-print">
           <button
             type="button"
-            onClick={() => navigate("/")}
+            onClick={goHomeWithCurrentBlock}
             className="invoice-back-btn"
           >
             ← Quay về trang chủ

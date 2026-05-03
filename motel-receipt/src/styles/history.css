@@ -508,3 +508,93 @@
     height: 19px;
   }
 }
+/* =========================
+   DISTINGUISH BLOCKS
+========================= */
+
+.timeline-item.history-entry-card.block-a {
+  border-left: 5px solid #8b5cf6;
+}
+
+.timeline-item.history-entry-card.block-b {
+  border-left: 5px solid #22c55e;
+}
+
+.timeline-item.history-entry-card.block-c {
+  border-left: 5px solid #f59e0b;
+}
+
+.timeline-item.history-entry-card.block-d {
+  border-left: 5px solid #06b6d4;
+}
+
+.timeline-item.history-entry-card.block-default {
+  border-left: 5px solid #94a3b8;
+}
+
+.history-entry-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.history-block-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.history-block-chip.block-a {
+  background: #f3e8ff;
+  color: #7c3aed;
+}
+
+.history-block-chip.block-b {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.history-block-chip.block-c {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.history-block-chip.block-d {
+  background: #cffafe;
+  color: #0f766e;
+}
+
+.history-block-chip.block-default {
+  background: #e5e7eb;
+  color: #475569;
+}
+
+.history-tenant-name {
+  color: #6b7280;
+  font-size: 15px;
+  line-height: 1.5;
+  font-weight: 700;
+}
+
+@media (max-width: 560px) {
+  .history-entry-meta {
+    gap: 7px;
+  }
+
+  .history-block-chip {
+    min-height: 26px;
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
+  .history-tenant-name {
+    font-size: 14px;
+  }
+}

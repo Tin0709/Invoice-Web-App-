@@ -1776,3 +1776,190 @@
     transition: none;
   }
 }
+/* =========================
+   BLOCK COLORS 
+========================= */
+
+.block-card {
+  --block-color: #94a3b8;
+  --block-text: #475569;
+  --block-soft: #f8fafc;
+  --block-header: #f8fafc;
+  --block-chip-bg: #e5e7eb;
+  --block-chip-text: #475569;
+}
+
+.block-card.block-a,
+.room-card.block-a {
+  --block-color: #8b5cf6;
+  --block-text: #7c3aed;
+  --block-soft: #faf5ff;
+  --block-header: #f3e8ff;
+  --block-chip-bg: #f3e8ff;
+  --block-chip-text: #7c3aed;
+}
+
+.block-card.block-b,
+.room-card.block-b {
+  --block-color: #22c55e;
+  --block-text: #15803d;
+  --block-soft: #f0fdf4;
+  --block-header: #dcfce7;
+  --block-chip-bg: #dcfce7;
+  --block-chip-text: #15803d;
+}
+
+.block-card.block-c,
+.room-card.block-c {
+  --block-color: #f59e0b;
+  --block-text: #b45309;
+  --block-soft: #fffbeb;
+  --block-header: #fef3c7;
+  --block-chip-bg: #fef3c7;
+  --block-chip-text: #b45309;
+}
+
+.block-card.block-d,
+.room-card.block-d {
+  --block-color: #06b6d4;
+  --block-text: #0f766e;
+  --block-soft: #ecfeff;
+  --block-header: #cffafe;
+  --block-chip-bg: #cffafe;
+  --block-chip-text: #0f766e;
+}
+
+.block-card.block-default,
+.room-card.block-default {
+  --block-color: #94a3b8;
+  --block-text: #475569;
+  --block-soft: #f8fafc;
+  --block-header: #e5e7eb;
+  --block-chip-bg: #e5e7eb;
+  --block-chip-text: #475569;
+}
+
+/* Dãy collapsed / opened */
+.block-card {
+  border-left: 5px solid transparent;
+}
+
+.block-card.active-block-card {
+  border-color: var(--block-color) !important;
+  border-left-color: var(--block-color) !important;
+  background: var(--block-soft) !important;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08) !important;
+}
+
+.block-card.active-block-card .block-header {
+  background: var(--block-header);
+  border-bottom-color: rgba(148, 163, 184, 0.24);
+}
+
+.block-card.active-block-card .block-title-button span {
+  color: var(--block-text);
+}
+
+.block-title-button span {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.block-title-button span::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--block-color);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--block-color) 14%, transparent);
+}
+
+.room-count {
+  background: var(--block-chip-bg);
+  color: var(--block-text);
+}
+
+/* Room card tone */
+.room-card {
+  position: relative;
+}
+
+.room-card::after {
+  display: none;
+}
+
+.room-card.block-a,
+.room-card.block-b,
+.room-card.block-c,
+.room-card.block-d,
+.room-card.block-default {
+  padding-left: 20px;
+}
+
+/* Người thuê + badge dãy */
+.room-person-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.room-person-row p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.room-block-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 26px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  background: var(--block-chip-bg);
+  color: var(--block-chip-text);
+  font-size: 12px;
+  font-weight: 950;
+  line-height: 1;
+}
+
+/* Button menu tone */
+.active-block-card .block-menu-btn {
+  border-color: color-mix(in srgb, var(--block-color) 26%, #e5e7eb);
+}
+
+.active-block-card .block-menu-btn:hover {
+  background: var(--block-header);
+}
+
+/* Mobile */
+@media (max-width: 620px) {
+  .block-card {
+    border-left-width: 4px;
+  }
+
+  .room-card::after {
+    top: 16px;
+    bottom: 16px;
+    width: 4px;
+  }
+
+  .room-person-row {
+    gap: 7px;
+    margin-bottom: 12px;
+  }
+
+  .room-person-row p {
+    font-size: 15px;
+  }
+
+  .room-block-chip {
+    min-height: 24px;
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+}

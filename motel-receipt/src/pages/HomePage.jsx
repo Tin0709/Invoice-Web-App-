@@ -24,7 +24,6 @@ import {
 
 const INVOICE_DRAFT_PREFIX = "motel_receipt_invoice_draft";
 const DRAFT_NOTICE_KEY = "motel_receipt_invoice_draft_notice";
-const LAST_OPEN_BLOCK_KEY = "motel_receipt_last_open_block";
 
 function formatMoneyInput(value) {
   const raw = String(value ?? "").replace(/[^\d]/g, "");
@@ -38,6 +37,24 @@ function parseMoneyInput(value) {
 
 function clampNonNegative(number) {
   return number < 0 ? 0 : number;
+}
+
+function normalizeBlockText(value) {
+  return String(value ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function getBlockTone(blockName) {
+  const text = normalizeBlockText(blockName);
+
+  if (text.includes("day a")) return "block-a";
+  if (text.includes("day b")) return "block-b";
+  if (text.includes("day c")) return "block-c";
+  if (text.includes("day d")) return "block-d";
+
+  return "block-default";
 }
 
 function getDraftUserKey() {
@@ -98,17 +115,6 @@ async function deleteDraftsForBlockFromServer(blockId) {
     .from("invoice_drafts")
     .delete()
     .eq("block_id", blockId);
-
-  if (error) {
-    throw error;
-  }
-}
-
-async function renameRoomOnServer(roomId, roomName) {
-  const { error } = await supabase
-    .from("rooms")
-    .update({ room_name: roomName })
-    .eq("id", roomId);
 
   if (error) {
     throw error;
@@ -319,13 +325,6 @@ export default function HomePage() {
     block: null,
   });
 
-  const [roomManageModal, setRoomManageModal] = useState({
-    open: false,
-    blockId: null,
-    roomId: null,
-    roomName: "",
-  });
-
   const [confirmState, setConfirmState] = useState({
     open: false,
     type: "",
@@ -480,7 +479,12 @@ export default function HomePage() {
 
       if (!raw) return;
 
-      setDraftToast("⚠️ Phiếu thu chưa được lưu.");
+      const notice = JSON.parse(raw);
+
+      setDraftToast(
+        notice?.message ||
+          "⚠️ Phiếu thu chưa được lưu. Mình đã giữ lại dưới dạng bản nháp."
+      );
 
       setIsDraftToastOpen(false);
       setIsDraftToastClosing(false);
@@ -536,18 +540,12 @@ export default function HomePage() {
 
       saveData(serverData);
 
-      const preferredBlockId =
-        location.state?.openBlockId ||
-        localStorage.getItem(LAST_OPEN_BLOCK_KEY);
-
       setExpandedBlockId((currentBlockId) => {
-        const wantedBlockId = preferredBlockId || currentBlockId;
-
-        const wantedStillExists = serverData.blocks.some(
-          (block) => block.id === wantedBlockId
+        const currentStillExists = serverData.blocks.some(
+          (block) => block.id === currentBlockId
         );
 
-        if (wantedStillExists) return wantedBlockId;
+        if (currentStillExists) return currentBlockId;
 
         return serverData.blocks.length > 0 ? serverData.blocks[0].id : null;
       });
@@ -674,95 +672,6 @@ export default function HomePage() {
     });
   };
 
-  const openRoomManageModal = (blockId, room) => {
-    setRoomManageModal({
-      open: true,
-      blockId,
-      roomId: room.id,
-      roomName: room.roomName || "",
-    });
-  };
-
-  const closeRoomManageModal = () => {
-    setRoomManageModal({
-      open: false,
-      blockId: null,
-      roomId: null,
-      roomName: "",
-    });
-  };
-
-  const handleRoomNameSave = async (event) => {
-    event.preventDefault();
-
-    const nextRoomName = roomManageModal.roomName.trim();
-
-    if (!nextRoomName) {
-      showRoomToast("Vui lòng nhập tên phòng.");
-      return;
-    }
-
-    try {
-      await renameRoomOnServer(roomManageModal.roomId, nextRoomName);
-
-      setData((prev) => {
-        const nextData = {
-          ...prev,
-          blocks: prev.blocks.map((block) =>
-            block.id === roomManageModal.blockId
-              ? {
-                  ...block,
-                  rooms: block.rooms.map((room) =>
-                    room.id === roomManageModal.roomId
-                      ? { ...room, roomName: nextRoomName }
-                      : room
-                  ),
-                }
-              : block
-          ),
-        };
-
-        saveData(nextData);
-        return nextData;
-      });
-
-      setDraftMap((currentMap) => {
-        const mapKey = getDraftMapKey(
-          roomManageModal.blockId,
-          roomManageModal.roomId
-        );
-
-        if (!currentMap[mapKey]) return currentMap;
-
-        return {
-          ...currentMap,
-          [mapKey]: {
-            ...currentMap[mapKey],
-            meta: {
-              ...(currentMap[mapKey].meta || {}),
-              room: nextRoomName,
-            },
-          },
-        };
-      });
-
-      closeRoomManageModal();
-      showRoomToast("✅ Đã đổi tên phòng.");
-    } catch (error) {
-      console.error("Rename room error:", error);
-      showRoomToast(error.message || "Không thể đổi tên phòng.");
-    }
-  };
-
-  const handleRoomDeleteFromModal = () => {
-    const { blockId, roomId } = roomManageModal;
-
-    if (!blockId || !roomId) return;
-
-    closeRoomManageModal();
-    handleDeleteRoom(blockId, roomId);
-  };
-
   const handleRenameBlockSubmit = async (event) => {
     event.preventDefault();
 
@@ -820,7 +729,6 @@ export default function HomePage() {
       });
 
       setExpandedBlockId(newBlock.id);
-      localStorage.setItem(LAST_OPEN_BLOCK_KEY, newBlock.id);
       setOpenAddRoomBlockId(null);
       setNewBlockName("");
 
@@ -1125,10 +1033,11 @@ export default function HomePage() {
                 ) : (
                   filteredBlocks.map((block) => {
                     const isOpen = expandedBlockId === block.id;
+                    const blockToneClass = getBlockTone(block.name);
 
                     return (
                       <div
-                        className={`block-card card ${
+                        className={`block-card card ${blockToneClass} ${
                           isOpen ? "active-block-card" : ""
                         }`}
                         key={block.id}
@@ -1137,20 +1046,9 @@ export default function HomePage() {
                           <button
                             type="button"
                             className="block-title-button"
-                            onClick={() => {
-                              const nextBlockId = isOpen ? null : block.id;
-
-                              setExpandedBlockId(nextBlockId);
-
-                              if (nextBlockId) {
-                                localStorage.setItem(
-                                  LAST_OPEN_BLOCK_KEY,
-                                  nextBlockId
-                                );
-                              } else {
-                                localStorage.removeItem(LAST_OPEN_BLOCK_KEY);
-                              }
-                            }}
+                            onClick={() =>
+                              setExpandedBlockId(isOpen ? null : block.id)
+                            }
                           >
                             <span>{block.name}</span>
                           </button>
@@ -1208,69 +1106,36 @@ export default function HomePage() {
 
                                 return (
                                   <div
-                                    className={`room-card ${roomCardStatusClass}`}
+                                    className={`room-card ${roomCardStatusClass} ${blockToneClass}`}
                                     key={room.id}
                                   >
-                                    <div className="room-card-head room-card-head-with-edit">
-                                      <Link
-                                        className="room-title-link"
-                                        to={`/invoice/${block.id}/${room.id}${invoiceQuery}`}
-                                      >
+                                    <Link
+                                      className="room-main"
+                                      to={`/invoice/${block.id}/${room.id}${invoiceQuery}`}
+                                    >
+                                      <div className="room-card-head">
                                         <h3>{displayRoomName}</h3>
-                                      </Link>
 
-                                      <div className="room-card-head-actions">
                                         {draft ? (
                                           <span className="room-draft-badge">
-                                            Chưa lưu
+                                            Bản nháp chưa lưu
                                           </span>
                                         ) : latestInvoice ? (
                                           <span className="room-saved-badge">
                                             Đã lưu
                                           </span>
                                         ) : null}
-
-                                        <button
-                                          type="button"
-                                          className="room-edit-icon-btn"
-                                          onClick={(event) => {
-                                            event.preventDefault();
-                                            event.stopPropagation();
-                                            openRoomManageModal(block.id, room);
-                                          }}
-                                          aria-label={`Chỉnh sửa ${displayRoomName}`}
-                                          title="Chỉnh sửa phòng"
-                                        >
-                                          <svg
-                                            viewBox="0 0 24 24"
-                                            aria-hidden="true"
-                                            focusable="false"
-                                          >
-                                            <path
-                                              d="M4 20h5.2L19.1 10.1c1.2-1.2 1.2-3.1 0-4.2l-1-1c-1.2-1.2-3.1-1.2-4.2 0L4 14.8V20Z"
-                                              fill="none"
-                                              stroke="currentColor"
-                                              strokeWidth="1.9"
-                                              strokeLinecap="round"
-                                              strokeLinejoin="round"
-                                            />
-                                            <path
-                                              d="M13.2 5.6l5.2 5.2"
-                                              fill="none"
-                                              stroke="currentColor"
-                                              strokeWidth="1.9"
-                                              strokeLinecap="round"
-                                            />
-                                          </svg>
-                                        </button>
                                       </div>
-                                    </div>
 
-                                    <Link
-                                      className="room-main room-main-body"
-                                      to={`/invoice/${block.id}/${room.id}${invoiceQuery}`}
-                                    >
-                                      <p>{displayTenantName}</p>
+                                      <div className="room-person-row">
+                                        <span
+                                          className={`room-block-chip ${blockToneClass}`}
+                                        >
+                                          {block.name}
+                                        </span>
+
+                                        <p>{displayTenantName}</p>
+                                      </div>
 
                                       <div className="room-meta">
                                         <span>
@@ -1310,6 +1175,18 @@ export default function HomePage() {
                                         ) : null}
                                       </div>
                                     </Link>
+
+                                    <div className="room-actions">
+                                      <button
+                                        type="button"
+                                        className="danger-btn small-btn"
+                                        onClick={() =>
+                                          handleDeleteRoom(block.id, room.id)
+                                        }
+                                      >
+                                        Xoá
+                                      </button>
+                                    </div>
                                   </div>
                                 );
                               })}
@@ -1573,71 +1450,6 @@ export default function HomePage() {
               </button>
             </div>
           </div>
-        </div>
-      )}
-
-      {roomManageModal.open && (
-        <div className="add-room-modal-overlay" onClick={closeRoomManageModal}>
-          <form
-            className="add-room-modal room-manage-modal"
-            onSubmit={handleRoomNameSave}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="add-room-modal-header">
-              <div>
-                <div className="add-room-modal-badge">Quản lý phòng</div>
-
-                <h2>Chỉnh sửa phòng</h2>
-              </div>
-
-              <button
-                type="button"
-                className="add-room-modal-x"
-                onClick={closeRoomManageModal}
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="add-room-modal-fields">
-              <input
-                type="text"
-                placeholder="Tên phòng"
-                value={roomManageModal.roomName}
-                onChange={(e) =>
-                  setRoomManageModal((prev) => ({
-                    ...prev,
-                    roomName: e.target.value,
-                  }))
-                }
-                autoFocus
-              />
-            </div>
-
-            <div className="room-manage-actions">
-              <button
-                type="button"
-                className="danger-btn room-manage-delete-btn"
-                onClick={handleRoomDeleteFromModal}
-              >
-                Xoá phòng
-              </button>
-
-              <div className="room-manage-right-actions">
-                <button
-                  type="button"
-                  className="add-room-modal-secondary"
-                  onClick={closeRoomManageModal}
-                >
-                  Huỷ
-                </button>
-
-                <button type="submit" className="add-room-modal-primary">
-                  Lưu thay đổi
-                </button>
-              </div>
-            </div>
-          </form>
         </div>
       )}
 

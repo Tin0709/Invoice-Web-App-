@@ -82,18 +82,39 @@ function getDebtValue(item) {
   );
 }
 
+function getBlockTone(blockName) {
+  const text = normalizeText(blockName);
+
+  if (text.includes("day a")) return "block-a";
+  if (text.includes("day b")) return "block-b";
+  if (text.includes("day c")) return "block-c";
+  if (text.includes("day d")) return "block-d";
+
+  return "block-default";
+}
+
 function groupInvoicesByMonth(invoices) {
   const sortedInvoices = [...invoices].sort((a, b) => {
     const yearDiff = Number(b.year) - Number(a.year);
-
     if (yearDiff !== 0) return yearDiff;
 
     const monthDiff = Number(b.month) - Number(a.month);
-
     if (monthDiff !== 0) return monthDiff;
 
-    return String(a.roomName || "").localeCompare(
+    const blockDiff = String(a.blockName || "").localeCompare(
+      String(b.blockName || ""),
+      "vi"
+    );
+    if (blockDiff !== 0) return blockDiff;
+
+    const roomDiff = String(a.roomName || "").localeCompare(
       String(b.roomName || ""),
+      "vi"
+    );
+    if (roomDiff !== 0) return roomDiff;
+
+    return String(a.tenantName || "").localeCompare(
+      String(b.tenantName || ""),
       "vi"
     );
   });
@@ -137,10 +158,7 @@ export default function HistoryPage() {
 
     try {
       const serverData = await loadDataFromSupabase();
-
       setData(serverData);
-
-      // Giữ cache local để Invoice.jsx đọc số cũ/tháng trước ổn định.
       saveData(serverData);
     } catch (error) {
       console.error("Load history data error:", error);
@@ -336,7 +354,6 @@ export default function HistoryPage() {
                   <div className="history-filter-head">
                     <div>
                       <h2>Bộ lọc lịch sử</h2>
-
                       <p>
                         Đang hiển thị {filteredInvoices.length}/
                         {invoices.length} phiếu.
@@ -357,7 +374,6 @@ export default function HistoryPage() {
                   <div className="history-filter-grid">
                     <div className="history-filter-field history-search-field">
                       <label>Tìm kiếm</label>
-
                       <input
                         type="text"
                         placeholder="Tìm phòng, người thuê, dãy..."
@@ -368,13 +384,11 @@ export default function HistoryPage() {
 
                     <div className="history-filter-field">
                       <label>Tháng</label>
-
                       <select
                         value={filters.month}
                         onChange={(e) => updateFilter("month", e.target.value)}
                       >
                         <option value="all">Tất cả</option>
-
                         {Array.from(
                           { length: 12 },
                           (_, index) => index + 1
@@ -388,13 +402,11 @@ export default function HistoryPage() {
 
                     <div className="history-filter-field">
                       <label>Năm</label>
-
                       <select
                         value={filters.year}
                         onChange={(e) => updateFilter("year", e.target.value)}
                       >
                         <option value="all">Tất cả</option>
-
                         {yearOptions.map((year) => (
                           <option key={year} value={year}>
                             {year}
@@ -405,7 +417,6 @@ export default function HistoryPage() {
 
                     <div className="history-filter-field">
                       <label>Dãy</label>
-
                       <select
                         value={filters.blockId}
                         onChange={(e) =>
@@ -413,7 +424,6 @@ export default function HistoryPage() {
                         }
                       >
                         <option value="all">Tất cả</option>
-
                         {blockOptions.map((block) => (
                           <option key={block.id} value={block.id}>
                             {block.name}
@@ -424,7 +434,6 @@ export default function HistoryPage() {
 
                     <div className="history-filter-field">
                       <label>Trạng thái</label>
-
                       <select
                         value={filters.status}
                         onChange={(e) => updateFilter("status", e.target.value)}
@@ -457,7 +466,6 @@ export default function HistoryPage() {
                           <h2>
                             {group.month}/{group.year}
                           </h2>
-
                           <span>{group.items.length} phiếu</span>
                         </div>
 
@@ -473,10 +481,11 @@ export default function HistoryPage() {
                       <div className="timeline-list">
                         {group.items.map((item, index) => {
                           const debt = getDebtValue(item);
+                          const toneClass = getBlockTone(item.blockName);
 
                           return (
                             <article
-                              className="timeline-item history-entry-card"
+                              className={`timeline-item history-entry-card ${toneClass}`}
                               key={`${group.key}-${item.roomId}-${index}`}
                             >
                               <button
@@ -496,9 +505,16 @@ export default function HistoryPage() {
                                 <div className="timeline-left history-entry-main">
                                   <strong>{item.roomName}</strong>
 
-                                  <span>
-                                    {item.blockName} - {item.tenantName}
-                                  </span>
+                                  <div className="history-entry-meta">
+                                    <span
+                                      className={`history-block-chip ${toneClass}`}
+                                    >
+                                      {item.blockName}
+                                    </span>
+                                    <span className="history-tenant-name">
+                                      {item.tenantName}
+                                    </span>
+                                  </div>
                                 </div>
 
                                 <div className="timeline-right history-entry-right">

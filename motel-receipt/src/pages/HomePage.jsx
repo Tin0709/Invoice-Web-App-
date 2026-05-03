@@ -4,13 +4,19 @@ import AccountMenu from "../components/AccountMenu";
 import "../styles/home.css";
 import "../styles/invoice.css";
 import {
-  createId,
   formatCurrency,
   getAllInvoicesFlat,
   getLatestInvoice,
-  loadData,
   saveData,
 } from "../utils/storage";
+import {
+  createBlockOnServer,
+  createRoomOnServer,
+  deleteBlockOnServer,
+  deleteRoomOnServer,
+  loadDataFromSupabase,
+  renameBlockOnServer,
+} from "../utils/supabaseStorage";
 
 function formatMoneyInput(value) {
   const raw = String(value ?? "").replace(/[^\d]/g, "");
@@ -63,12 +69,12 @@ function getRoomCardMoney(room, latestInvoice) {
 export default function HomePage() {
   const location = useLocation();
 
-  const [data, setData] = useState(() => loadData());
+  const [data, setData] = useState({ blocks: [] });
+  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [pageError, setPageError] = useState("");
+
   const [newBlockName, setNewBlockName] = useState("");
-  const [expandedBlockId, setExpandedBlockId] = useState(() => {
-    const stored = loadData();
-    return stored.blocks.length > 0 ? stored.blocks[0].id : null;
-  });
+  const [expandedBlockId, setExpandedBlockId] = useState(null);
 
   const [search, setSearch] = useState("");
   const [roomInputs, setRoomInputs] = useState({});
@@ -94,8 +100,47 @@ export default function HomePage() {
     onConfirm: null,
   });
 
+  const showRoomToast = (message) => {
+    setRoomToast(message);
+
+    setTimeout(() => {
+      setRoomToast("");
+    }, 1800);
+  };
+
+  const refreshData = async () => {
+    setIsLoadingData(true);
+    setPageError("");
+
+    try {
+      const serverData = await loadDataFromSupabase();
+
+      setData(serverData);
+
+      // Tạm thời sync xuống localStorage để các trang Invoice/History cũ vẫn đọc được.
+      // Sau khi mình chuyển InvoicePage và HistoryPage sang Supabase thì có thể bỏ dòng này.
+      saveData(serverData);
+
+      setExpandedBlockId((currentBlockId) => {
+        const currentStillExists = serverData.blocks.some(
+          (block) => block.id === currentBlockId
+        );
+
+        if (currentStillExists) return currentBlockId;
+
+        return serverData.blocks.length > 0 ? serverData.blocks[0].id : null;
+      });
+    } catch (error) {
+      console.error("Load Supabase data error:", error);
+      setPageError(error.message || "Không thể tải dữ liệu từ Supabase.");
+    } finally {
+      setIsLoadingData(false);
+    }
+  };
+
   useEffect(() => {
-    setData(loadData());
+    refreshData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.key]);
 
   const activeAddRoomBlock = useMemo(() => {
@@ -106,25 +151,6 @@ export default function HomePage() {
   const activeInputs = openAddRoomBlockId
     ? roomInputs[openAddRoomBlockId] || {}
     : {};
-
-  const commitData = (updater) => {
-    const latestData = loadData();
-    const nextData =
-      typeof updater === "function" ? updater(latestData) : updater;
-
-    saveData(nextData);
-    setData(nextData);
-
-    return nextData;
-  };
-
-  const showRoomToast = (message) => {
-    setRoomToast(message);
-
-    setTimeout(() => {
-      setRoomToast("");
-    }, 1800);
-  };
 
   const openConfirm = ({ type, title, message, onConfirm }) => {
     setConfirmState({
@@ -146,12 +172,17 @@ export default function HomePage() {
     });
   };
 
-  const handleConfirmOk = () => {
-    if (typeof confirmState.onConfirm === "function") {
-      confirmState.onConfirm();
+  const handleConfirmOk = async () => {
+    try {
+      if (typeof confirmState.onConfirm === "function") {
+        await confirmState.onConfirm();
+      }
+    } catch (error) {
+      console.error(error);
+      showRoomToast(error.message || "Có lỗi xảy ra.");
+    } finally {
+      closeConfirm();
     }
-
-    closeConfirm();
   };
 
   const closeAddRoomModal = () => {
@@ -188,7 +219,7 @@ export default function HomePage() {
     });
   };
 
-  const handleRenameBlockSubmit = (event) => {
+  const handleRenameBlockSubmit = async (event) => {
     event.preventDefault();
 
     const newName = renameBlockModal.value.trim();
@@ -198,20 +229,32 @@ export default function HomePage() {
       return;
     }
 
-    commitData((prev) => ({
-      ...prev,
-      blocks: prev.blocks.map((block) =>
-        block.id === renameBlockModal.blockId
-          ? { ...block, name: newName }
-          : block
-      ),
-    }));
+    try {
+      await renameBlockOnServer(renameBlockModal.blockId, newName);
 
-    closeRenameBlockModal();
-    showRoomToast("✅ Đã đổi tên dãy.");
+      setData((prev) => {
+        const nextData = {
+          ...prev,
+          blocks: prev.blocks.map((block) =>
+            block.id === renameBlockModal.blockId
+              ? { ...block, name: newName }
+              : block
+          ),
+        };
+
+        saveData(nextData);
+        return nextData;
+      });
+
+      closeRenameBlockModal();
+      showRoomToast("✅ Đã đổi tên dãy.");
+    } catch (error) {
+      console.error(error);
+      showRoomToast(error.message || "Không thể đổi tên dãy.");
+    }
   };
 
-  const handleAddBlock = () => {
+  const handleAddBlock = async () => {
     const name = newBlockName.trim();
 
     if (!name) {
@@ -219,22 +262,28 @@ export default function HomePage() {
       return;
     }
 
-    const newBlock = {
-      id: createId(),
-      name,
-      rooms: [],
-    };
+    try {
+      const newBlock = await createBlockOnServer(name);
 
-    commitData((prev) => ({
-      ...prev,
-      blocks: [...prev.blocks, newBlock],
-    }));
+      setData((prev) => {
+        const nextData = {
+          ...prev,
+          blocks: [...prev.blocks, newBlock],
+        };
 
-    setExpandedBlockId(newBlock.id);
-    setOpenAddRoomBlockId(null);
-    setNewBlockName("");
+        saveData(nextData);
+        return nextData;
+      });
 
-    showRoomToast("✅ Đã tạo dãy mới.");
+      setExpandedBlockId(newBlock.id);
+      setOpenAddRoomBlockId(null);
+      setNewBlockName("");
+
+      showRoomToast("✅ Đã tạo dãy mới.");
+    } catch (error) {
+      console.error(error);
+      showRoomToast(error.message || "Không thể tạo dãy mới.");
+    }
   };
 
   const handleDeleteBlock = (blockId) => {
@@ -246,17 +295,27 @@ export default function HomePage() {
       message: `Bạn có chắc muốn xoá dãy "${
         block?.name || ""
       }" không? Toàn bộ phòng và dữ liệu phiếu trong dãy này sẽ bị xoá.`,
-      onConfirm: () => {
-        const nextData = commitData((prev) => ({
-          ...prev,
-          blocks: prev.blocks.filter((block) => block.id !== blockId),
-        }));
+      onConfirm: async () => {
+        await deleteBlockOnServer(blockId);
 
-        if (expandedBlockId === blockId) {
-          setExpandedBlockId(
-            nextData.blocks.length > 0 ? nextData.blocks[0].id : null
+        setData((prev) => {
+          const nextBlocks = prev.blocks.filter(
+            (block) => block.id !== blockId
           );
-        }
+
+          const nextData = {
+            ...prev,
+            blocks: nextBlocks,
+          };
+
+          saveData(nextData);
+
+          if (expandedBlockId === blockId) {
+            setExpandedBlockId(nextBlocks.length > 0 ? nextBlocks[0].id : null);
+          }
+
+          return nextData;
+        });
 
         if (openAddRoomBlockId === blockId) {
           setOpenAddRoomBlockId(null);
@@ -301,7 +360,7 @@ export default function HomePage() {
     }));
   };
 
-  const handleAddRoom = (blockId) => {
+  const handleAddRoom = async (blockId) => {
     const values = roomInputs[blockId] || {};
     const roomName = (values.roomName || "").trim();
     const tenantName = (values.tenantName || "").trim();
@@ -312,35 +371,43 @@ export default function HomePage() {
       return;
     }
 
-    const newRoom = {
-      id: createId(),
-      roomName,
-      tenantName,
-      defaultRent,
-      defaultTrash: 15000,
-      invoices: [],
-    };
+    try {
+      const newRoom = await createRoomOnServer(blockId, {
+        roomName,
+        tenantName,
+        defaultRent,
+        defaultTrash: 15000,
+      });
 
-    commitData((prev) => ({
-      ...prev,
-      blocks: prev.blocks.map((block) =>
-        block.id === blockId
-          ? { ...block, rooms: [...block.rooms, newRoom] }
-          : block
-      ),
-    }));
+      setData((prev) => {
+        const nextData = {
+          ...prev,
+          blocks: prev.blocks.map((block) =>
+            block.id === blockId
+              ? { ...block, rooms: [...block.rooms, newRoom] }
+              : block
+          ),
+        };
 
-    setRoomInputs((prev) => ({
-      ...prev,
-      [blockId]: {
-        roomName: "",
-        tenantName: "",
-        defaultRent: "",
-      },
-    }));
+        saveData(nextData);
+        return nextData;
+      });
 
-    setOpenAddRoomBlockId(null);
-    showRoomToast("✅ Đã thêm phòng mới thành công.");
+      setRoomInputs((prev) => ({
+        ...prev,
+        [blockId]: {
+          roomName: "",
+          tenantName: "",
+          defaultRent: "",
+        },
+      }));
+
+      setOpenAddRoomBlockId(null);
+      showRoomToast("✅ Đã thêm phòng mới thành công.");
+    } catch (error) {
+      console.error(error);
+      showRoomToast(error.message || "Không thể thêm phòng mới.");
+    }
   };
 
   const handleAddRoomSubmit = (event) => {
@@ -361,18 +428,25 @@ export default function HomePage() {
       message: `Bạn có chắc muốn xoá phòng "${
         room?.roomName || ""
       }" không? Dữ liệu phiếu của phòng này cũng sẽ bị xoá.`,
-      onConfirm: () => {
-        commitData((prev) => ({
-          ...prev,
-          blocks: prev.blocks.map((block) =>
-            block.id === blockId
-              ? {
-                  ...block,
-                  rooms: block.rooms.filter((room) => room.id !== roomId),
-                }
-              : block
-          ),
-        }));
+      onConfirm: async () => {
+        await deleteRoomOnServer(roomId);
+
+        setData((prev) => {
+          const nextData = {
+            ...prev,
+            blocks: prev.blocks.map((block) =>
+              block.id === blockId
+                ? {
+                    ...block,
+                    rooms: block.rooms.filter((room) => room.id !== roomId),
+                  }
+                : block
+            ),
+          };
+
+          saveData(nextData);
+          return nextData;
+        });
 
         showRoomToast("Đã xoá phòng.");
       },
@@ -450,133 +524,146 @@ export default function HomePage() {
             </div>
           </section>
 
-          <section className="blocks-section">
-            {filteredBlocks.length === 0 ? (
-              <div className="card empty-state">
-                <p>Chưa có dữ liệu phù hợp.</p>
-              </div>
-            ) : (
-              filteredBlocks.map((block) => {
-                const isOpen = expandedBlockId === block.id;
+          {pageError && (
+            <section className="card empty-state">
+              <p>{pageError}</p>
+            </section>
+          )}
 
-                return (
-                  <div
-                    className={`block-card card ${
-                      isOpen ? "active-block-card" : ""
-                    }`}
-                    key={block.id}
-                  >
-                    <div className="block-header">
-                      <button
-                        type="button"
-                        className="block-title-button"
-                        onClick={() =>
-                          setExpandedBlockId(isOpen ? null : block.id)
-                        }
-                      >
-                        <span>{block.name}</span>
-                      </button>
+          {isLoadingData ? (
+            <section className="card empty-state">
+              <p>Đang tải dữ liệu từ Supabase...</p>
+            </section>
+          ) : (
+            <section className="blocks-section">
+              {filteredBlocks.length === 0 ? (
+                <div className="card empty-state">
+                  <p>Chưa có dữ liệu phù hợp.</p>
+                </div>
+              ) : (
+                filteredBlocks.map((block) => {
+                  const isOpen = expandedBlockId === block.id;
 
-                      <div className="block-actions">
-                        <span className="room-count">
-                          {block.rooms.length} phòng
-                        </span>
-
+                  return (
+                    <div
+                      className={`block-card card ${
+                        isOpen ? "active-block-card" : ""
+                      }`}
+                      key={block.id}
+                    >
+                      <div className="block-header">
                         <button
                           type="button"
-                          className="block-menu-btn"
-                          onClick={() => openBlockMenuModal(block)}
-                          aria-label={`Mở tuỳ chọn cho ${block.name}`}
+                          className="block-title-button"
+                          onClick={() =>
+                            setExpandedBlockId(isOpen ? null : block.id)
+                          }
                         >
-                          ⋯
+                          <span>{block.name}</span>
                         </button>
-                      </div>
-                    </div>
 
-                    {isOpen && (
-                      <div className="block-content">
-                        <div className="room-grid">
-                          {block.rooms.map((room) => {
-                            const latestInvoice = getLatestInvoice(room);
-                            const roomMoney = getRoomCardMoney(
-                              room,
-                              latestInvoice
-                            );
-
-                            const invoiceQuery = latestInvoice
-                              ? `?year=${latestInvoice.year}&month=${latestInvoice.month}`
-                              : "";
-
-                            return (
-                              <div className="room-card" key={room.id}>
-                                <Link
-                                  className="room-main"
-                                  to={`/invoice/${block.id}/${room.id}${invoiceQuery}`}
-                                >
-                                  <h3>{room.roomName}</h3>
-                                  <p>{room.tenantName}</p>
-
-                                  <div className="room-meta">
-                                    <span>
-                                      Tiền phòng:{" "}
-                                      {formatCurrency(roomMoney.rentAmount)} đ
-                                    </span>
-
-                                    <span>
-                                      Tiền khác:{" "}
-                                      {formatCurrency(roomMoney.otherAmount)} đ
-                                    </span>
-
-                                    <span
-                                      className={
-                                        roomMoney.debtAmount > 0
-                                          ? "room-debt debt"
-                                          : "room-debt ok"
-                                      }
-                                    >
-                                      Tiền còn thiếu:{" "}
-                                      {formatCurrency(roomMoney.debtAmount)} đ
-                                    </span>
-                                  </div>
-                                </Link>
-
-                                <div className="room-actions">
-                                  <button
-                                    type="button"
-                                    className="danger-btn small-btn"
-                                    onClick={() =>
-                                      handleDeleteRoom(block.id, room.id)
-                                    }
-                                  >
-                                    Xoá
-                                  </button>
-                                </div>
-                              </div>
-                            );
-                          })}
+                        <div className="block-actions">
+                          <span className="room-count">
+                            {block.rooms.length} phòng
+                          </span>
 
                           <button
                             type="button"
-                            className="add-room-tile"
-                            onClick={() => setOpenAddRoomBlockId(block.id)}
+                            className="block-menu-btn"
+                            onClick={() => openBlockMenuModal(block)}
+                            aria-label={`Mở tuỳ chọn cho ${block.name}`}
                           >
-                            <span className="add-room-plus">+</span>
-                            <span className="add-room-text">Thêm phòng</span>
+                            ⋯
                           </button>
-
-                          {block.rooms.length === 0 && (
-                            <div className="empty-room">
-                              Chưa có phòng nào trong dãy này.
-                            </div>
-                          )}
                         </div>
                       </div>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </section>
+
+                      {isOpen && (
+                        <div className="block-content">
+                          <div className="room-grid">
+                            {block.rooms.map((room) => {
+                              const latestInvoice = getLatestInvoice(room);
+                              const roomMoney = getRoomCardMoney(
+                                room,
+                                latestInvoice
+                              );
+
+                              const invoiceQuery = latestInvoice
+                                ? `?year=${latestInvoice.year}&month=${latestInvoice.month}`
+                                : "";
+
+                              return (
+                                <div className="room-card" key={room.id}>
+                                  <Link
+                                    className="room-main"
+                                    to={`/invoice/${block.id}/${room.id}${invoiceQuery}`}
+                                  >
+                                    <h3>{room.roomName}</h3>
+                                    <p>{room.tenantName}</p>
+
+                                    <div className="room-meta">
+                                      <span>
+                                        Tiền phòng:{" "}
+                                        {formatCurrency(roomMoney.rentAmount)} đ
+                                      </span>
+
+                                      <span>
+                                        Tiền khác:{" "}
+                                        {formatCurrency(roomMoney.otherAmount)}{" "}
+                                        đ
+                                      </span>
+
+                                      <span
+                                        className={
+                                          roomMoney.debtAmount > 0
+                                            ? "room-debt debt"
+                                            : "room-debt ok"
+                                        }
+                                      >
+                                        Tiền còn thiếu:{" "}
+                                        {formatCurrency(roomMoney.debtAmount)} đ
+                                      </span>
+                                    </div>
+                                  </Link>
+
+                                  <div className="room-actions">
+                                    <button
+                                      type="button"
+                                      className="danger-btn small-btn"
+                                      onClick={() =>
+                                        handleDeleteRoom(block.id, room.id)
+                                      }
+                                    >
+                                      Xoá
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+
+                            <button
+                              type="button"
+                              className="add-room-tile"
+                              onClick={() => setOpenAddRoomBlockId(block.id)}
+                            >
+                              <span className="add-room-plus">+</span>
+                              <span className="add-room-text">Thêm phòng</span>
+                            </button>
+
+                            {block.rooms.length === 0 && (
+                              <div className="empty-room">
+                                Chưa có phòng nào trong dãy này.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </section>
+          )}
 
           <section className="history-section card">
             <div className="history-head">

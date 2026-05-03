@@ -82,6 +82,45 @@ function getDebtValue(item) {
   );
 }
 
+function getPaidValue(item) {
+  return parseMoneyValue(item?.paid ?? 0);
+}
+
+function getTotalValue(item) {
+  const savedTotal = parseMoneyValue(
+    item?.total ?? item?.finalTotal ?? item?.totalAmount ?? 0
+  );
+
+  if (savedTotal > 0) return savedTotal;
+
+  return getPaidValue(item) + getDebtValue(item);
+}
+
+function getMonthSummary(items) {
+  return items.reduce(
+    (summary, item) => {
+      const total = getTotalValue(item);
+      const paid = getPaidValue(item);
+      const debt = getDebtValue(item);
+
+      return {
+        total: summary.total + total,
+        paid: summary.paid + paid,
+        debt: summary.debt + debt,
+        debtCount: summary.debtCount + (debt > 0 ? 1 : 0),
+        paidCount: summary.paidCount + (debt === 0 ? 1 : 0),
+      };
+    },
+    {
+      total: 0,
+      paid: 0,
+      debt: 0,
+      debtCount: 0,
+      paidCount: 0,
+    }
+  );
+}
+
 function getBlockTone(blockName) {
   const tones = ["block-a", "block-b", "block-c", "block-d"];
   const text = normalizeText(blockName);
@@ -118,7 +157,11 @@ function groupInvoicesByMonth(invoices) {
 
     const roomDiff = String(a.roomName || "").localeCompare(
       String(b.roomName || ""),
-      "vi"
+      "vi",
+      {
+        numeric: true,
+        sensitivity: "base",
+      }
     );
     if (roomDiff !== 0) return roomDiff;
 
@@ -151,6 +194,7 @@ function groupInvoicesByMonth(invoices) {
 export default function HistoryPage() {
   const [data, setData] = useState({ blocks: [] });
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [openMonthKeys, setOpenMonthKeys] = useState({});
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [pageError, setPageError] = useState("");
 
@@ -167,6 +211,7 @@ export default function HistoryPage() {
 
     try {
       const serverData = await loadDataFromSupabase();
+
       setData(serverData);
       saveData(serverData);
     } catch (error) {
@@ -255,6 +300,28 @@ export default function HistoryPage() {
     [filteredInvoices]
   );
 
+  useEffect(() => {
+    setOpenMonthKeys((currentOpenKeys) => {
+      if (grouped.length === 0) return {};
+
+      const validOpenKeys = {};
+
+      grouped.forEach((group) => {
+        if (currentOpenKeys[group.key]) {
+          validOpenKeys[group.key] = true;
+        }
+      });
+
+      if (Object.keys(validOpenKeys).length > 0) {
+        return validOpenKeys;
+      }
+
+      return {
+        [grouped[0].key]: true,
+      };
+    });
+  }, [grouped]);
+
   const hasActiveFilters =
     filters.search.trim() ||
     filters.month !== "all" ||
@@ -271,6 +338,13 @@ export default function HistoryPage() {
 
   const resetFilters = () => {
     setFilters(DEFAULT_FILTERS);
+  };
+
+  const toggleMonthGroup = (groupKey) => {
+    setOpenMonthKeys((currentOpenKeys) => ({
+      ...currentOpenKeys,
+      [groupKey]: !currentOpenKeys[groupKey],
+    }));
   };
 
   const openConfirm = ({ title, message, onConfirm }) => {
@@ -387,7 +461,9 @@ export default function HistoryPage() {
                         type="text"
                         placeholder="Tìm phòng, người thuê, dãy..."
                         value={filters.search}
-                        onChange={(e) => updateFilter("search", e.target.value)}
+                        onChange={(event) =>
+                          updateFilter("search", event.target.value)
+                        }
                       />
                     </div>
 
@@ -395,7 +471,9 @@ export default function HistoryPage() {
                       <label>Tháng</label>
                       <select
                         value={filters.month}
-                        onChange={(e) => updateFilter("month", e.target.value)}
+                        onChange={(event) =>
+                          updateFilter("month", event.target.value)
+                        }
                       >
                         <option value="all">Tất cả</option>
                         {Array.from(
@@ -413,7 +491,9 @@ export default function HistoryPage() {
                       <label>Năm</label>
                       <select
                         value={filters.year}
-                        onChange={(e) => updateFilter("year", e.target.value)}
+                        onChange={(event) =>
+                          updateFilter("year", event.target.value)
+                        }
                       >
                         <option value="all">Tất cả</option>
                         {yearOptions.map((year) => (
@@ -428,8 +508,8 @@ export default function HistoryPage() {
                       <label>Dãy</label>
                       <select
                         value={filters.blockId}
-                        onChange={(e) =>
-                          updateFilter("blockId", e.target.value)
+                        onChange={(event) =>
+                          updateFilter("blockId", event.target.value)
                         }
                       >
                         <option value="all">Tất cả</option>
@@ -445,7 +525,9 @@ export default function HistoryPage() {
                       <label>Trạng thái</label>
                       <select
                         value={filters.status}
-                        onChange={(e) => updateFilter("status", e.target.value)}
+                        onChange={(event) =>
+                          updateFilter("status", event.target.value)
+                        }
                       >
                         <option value="all">Tất cả</option>
                         <option value="debt">Còn thiếu</option>
@@ -468,82 +550,148 @@ export default function HistoryPage() {
                 </div>
               ) : (
                 <div className="timeline-groups content-fade-in-slow">
-                  {grouped.map((group) => (
-                    <section className="timeline-group" key={group.key}>
-                      <div className="timeline-group-header">
-                        <div>
-                          <h2>
-                            {group.month}/{group.year}
-                          </h2>
-                          <span>{group.items.length} phiếu</span>
+                  {grouped.map((group) => {
+                    const isGroupOpen = Boolean(openMonthKeys[group.key]);
+                    const monthSummary = getMonthSummary(group.items);
+
+                    return (
+                      <section
+                        className={`timeline-group ${
+                          isGroupOpen ? "is-open" : "is-collapsed"
+                        }`}
+                        key={group.key}
+                      >
+                        <div className="timeline-group-header">
+                          <button
+                            type="button"
+                            className="timeline-group-toggle"
+                            onClick={() => toggleMonthGroup(group.key)}
+                            aria-expanded={isGroupOpen}
+                          >
+                            <div className="month-header-top">
+                              <div>
+                                <h2>
+                                  {group.month}/{group.year}
+                                </h2>
+
+                                <span>
+                                  {group.items.length} phiếu •{" "}
+                                  {monthSummary.debtCount} còn thiếu •{" "}
+                                  {monthSummary.paidCount} đã trả đủ
+                                </span>
+                              </div>
+
+                              <span
+                                className="month-toggle-icon"
+                                aria-hidden="true"
+                              >
+                                <svg viewBox="0 0 24 24" focusable="false">
+                                  <path
+                                    d="M6 9L12 15L18 9"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2.6"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                </svg>
+                              </span>
+                            </div>
+
+                            <div className="month-summary-grid">
+                              <div className="month-summary-card">
+                                <span>Tổng phải thu</span>
+                                <strong>
+                                  {formatCurrency(monthSummary.total)} đ
+                                </strong>
+                              </div>
+
+                              <div className="month-summary-card paid">
+                                <span>Đã thu</span>
+                                <strong>
+                                  {formatCurrency(monthSummary.paid)} đ
+                                </strong>
+                              </div>
+
+                              <div className="month-summary-card debt">
+                                <span>Còn thiếu</span>
+                                <strong>
+                                  {formatCurrency(monthSummary.debt)} đ
+                                </strong>
+                              </div>
+                            </div>
+                          </button>
+
+                          <button
+                            type="button"
+                            className="danger-btn history-delete-month-btn"
+                            onClick={() => handleDeleteMonth(group)}
+                          >
+                            Xoá tháng này
+                          </button>
                         </div>
 
-                        <button
-                          type="button"
-                          className="danger-btn history-delete-month-btn"
-                          onClick={() => handleDeleteMonth(group)}
-                        >
-                          Xoá tháng này
-                        </button>
-                      </div>
+                        {isGroupOpen && (
+                          <div className="timeline-list">
+                            {group.items.map((item, index) => {
+                              const debt = getDebtValue(item);
+                              const toneClass = getBlockTone(item.blockName);
 
-                      <div className="timeline-list">
-                        {group.items.map((item, index) => {
-                          const debt = getDebtValue(item);
-                          const toneClass = getBlockTone(item.blockName);
-
-                          return (
-                            <article
-                              className={`timeline-item history-entry-card ${toneClass}`}
-                              key={`${group.key}-${item.roomId}-${index}`}
-                            >
-                              <button
-                                type="button"
-                                className="history-entry-delete-btn"
-                                onClick={() => handleDeleteOne(item)}
-                                aria-label={`Xoá lịch sử ${item.roomName}`}
-                                title="Xoá phiếu"
-                              >
-                                <TrashIcon />
-                              </button>
-
-                              <Link
-                                className="timeline-main history-entry-link"
-                                to={`/invoice/${item.blockId}/${item.roomId}?year=${item.year}&month=${item.month}`}
-                              >
-                                <div className="timeline-left history-entry-main">
-                                  <strong>{item.roomName}</strong>
-
-                                  <div className="history-entry-meta">
-                                    <span
-                                      className={`history-block-chip ${toneClass}`}
-                                    >
-                                      {item.blockName}
-                                    </span>
-                                    <span className="history-tenant-name">
-                                      {item.tenantName}
-                                    </span>
-                                  </div>
-                                </div>
-
-                                <div className="timeline-right history-entry-right">
-                                  <span
-                                    className={
-                                      debt > 0
-                                        ? "history-debt"
-                                        : "history-debt history-paid"
-                                    }
+                              return (
+                                <article
+                                  className={`timeline-item history-entry-card ${toneClass}`}
+                                  key={`${group.key}-${item.roomId}-${index}`}
+                                >
+                                  <button
+                                    type="button"
+                                    className="history-entry-delete-btn"
+                                    onClick={() => handleDeleteOne(item)}
+                                    aria-label={`Xoá lịch sử ${item.roomName}`}
+                                    title="Xoá phiếu"
                                   >
-                                    Còn thiếu: {formatCurrency(debt)} đ
-                                  </span>
-                                </div>
-                              </Link>
-                            </article>
-                          );
-                        })}
-                      </div>
-                    </section>
-                  ))}
+                                    <TrashIcon />
+                                  </button>
+
+                                  <Link
+                                    className="timeline-main history-entry-link"
+                                    to={`/invoice/${item.blockId}/${item.roomId}?year=${item.year}&month=${item.month}`}
+                                  >
+                                    <div className="timeline-left history-entry-main">
+                                      <strong>{item.roomName}</strong>
+
+                                      <div className="history-entry-meta">
+                                        <span
+                                          className={`history-block-chip ${toneClass}`}
+                                        >
+                                          {item.blockName}
+                                        </span>
+
+                                        <span className="history-tenant-name">
+                                          {item.tenantName}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    <div className="timeline-right history-entry-right">
+                                      <span
+                                        className={
+                                          debt > 0
+                                            ? "history-debt"
+                                            : "history-debt history-paid"
+                                        }
+                                      >
+                                        Còn thiếu: {formatCurrency(debt)} đ
+                                      </span>
+                                    </div>
+                                  </Link>
+                                </article>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </section>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -553,7 +701,10 @@ export default function HistoryPage() {
 
       {confirmState.open && (
         <div className="confirm-overlay" onClick={closeConfirm}>
-          <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="confirm-modal"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="confirm-badge">Xác nhận</div>
 
             <h3>{confirmState.title}</h3>

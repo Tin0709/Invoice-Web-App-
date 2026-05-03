@@ -1,3 +1,7 @@
+/* =========================
+   PAGE LAYOUT
+========================= */
+
 .history-page {
   min-height: 100vh;
   background: #f5f7fb;
@@ -17,16 +21,16 @@
 .history-back {
   display: inline-block;
   margin-bottom: 8px;
-  text-decoration: none;
   color: #5b21b6;
   font-weight: 800;
+  text-decoration: none;
 }
 
 .history-topbar h1 {
   margin: 0 0 8px;
+  color: #111827;
   font-size: 38px;
   line-height: 1.1;
-  color: #111827;
 }
 
 .history-topbar p {
@@ -36,17 +40,21 @@
   line-height: 1.6;
 }
 
+/* =========================
+   EMPTY STATE
+========================= */
+
 .history-empty-card {
   background: #ffffff;
+  border: 1px solid #e5e7eb;
   border-radius: 24px;
   padding: 28px;
-  border: 1px solid #e5e7eb;
 }
 
 .history-empty-card h3 {
   margin: 0 0 8px;
-  font-size: 28px;
   color: #111827;
+  font-size: 28px;
 }
 
 .history-empty-card p {
@@ -60,18 +68,18 @@
 ========================= */
 
 .history-filter-card {
+  margin-bottom: 22px;
+  padding: 20px;
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 24px;
-  padding: 20px;
-  margin-bottom: 22px;
   box-sizing: border-box;
 }
 
 .history-filter-head {
   display: flex;
-  justify-content: space-between;
   align-items: flex-start;
+  justify-content: space-between;
   gap: 16px;
   margin-bottom: 16px;
 }
@@ -89,14 +97,14 @@
 }
 
 .history-clear-filter-btn {
+  padding: 12px 16px;
   border: none;
+  border-radius: 14px;
   background: #eef2ff;
   color: #4338ca;
-  border-radius: 14px;
-  padding: 12px 16px;
   font-weight: 800;
-  cursor: pointer;
   white-space: nowrap;
+  cursor: pointer;
   transition: background 0.18s ease, transform 0.18s ease;
 }
 
@@ -128,11 +136,11 @@
 .history-filter-field select {
   width: 100%;
   min-width: 0;
-  border: 1px solid #e5e7eb;
-  background: #ffffff;
-  color: #111827;
-  border-radius: 14px;
   padding: 13px 14px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  color: #111827;
   font-size: 15px;
   outline: none;
   box-sizing: border-box;
@@ -155,63 +163,194 @@
 }
 
 .timeline-group {
-  background: #ffffff;
-  border-radius: 28px;
-  border: 1px solid #e5e7eb;
   overflow: hidden;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 28px;
 }
 
 .timeline-group-header {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
   gap: 16px;
-  align-items: center;
-  padding: 24px 24px 20px;
-  border-bottom: 1px solid #eef2f7;
+  padding: 0;
   background: linear-gradient(180deg, #fbfcff 0%, #f5f7ff 100%);
+  border-bottom: 1px solid #eef2f7;
 }
 
-.timeline-group-header h2 {
+.timeline-group-toggle {
+  width: 100%;
+  min-width: 0;
+  padding: 24px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.timeline-group-toggle:focus-visible {
+  outline: none;
+}
+
+.month-header-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.month-header-top h2 {
   margin: 0 0 6px;
+  color: #111827;
   font-size: clamp(34px, 5vw, 56px);
   line-height: 1;
   letter-spacing: -1px;
-  color: #111827;
 }
 
-.timeline-group-header span {
+.month-header-top span {
   color: #6b7280;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 800;
 }
+
+/* =========================
+   MONTH TOGGLE BUTTON
+========================= */
+
+.month-toggle-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  min-width: 46px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #eef2ff 0%, #e0e7ff 100%);
+  color: #4f46e5;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 8px 20px rgba(79, 70, 229, 0.12);
+  transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.month-toggle-icon svg {
+  display: block;
+  width: 23px;
+  height: 23px;
+}
+
+.timeline-group.is-open .month-toggle-icon {
+  transform: rotate(180deg);
+}
+
+.timeline-group-toggle:hover .month-toggle-icon {
+  background: linear-gradient(180deg, #e0e7ff 0%, #d8dcff 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 10px 24px rgba(79, 70, 229, 0.18);
+}
+
+.timeline-group-toggle:active .month-toggle-icon {
+  transform: scale(0.94);
+}
+
+.timeline-group.is-open .timeline-group-toggle:active .month-toggle-icon {
+  transform: rotate(180deg) scale(0.94);
+}
+
+.timeline-group-toggle:focus-visible .month-toggle-icon {
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.16),
+    0 10px 24px rgba(79, 70, 229, 0.18);
+}
+
+/* =========================
+   MONTH SUMMARY
+========================= */
+
+.month-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.month-summary-card {
+  min-width: 0;
+  padding: 14px 15px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+}
+
+.month-summary-card span {
+  display: block;
+  margin-bottom: 7px;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.month-summary-card strong {
+  display: block;
+  color: #111827;
+  font-size: 18px;
+  font-weight: 950;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.month-summary-card.paid {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.month-summary-card.paid strong {
+  color: #15803d;
+}
+
+.month-summary-card.debt {
+  background: #fff7f7;
+  border-color: #fecaca;
+}
+
+.month-summary-card.debt strong {
+  color: #dc2626;
+}
+
+/* =========================
+   HISTORY LIST
+========================= */
 
 .timeline-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 16px;
   padding: 18px;
+  border-top: 1px solid #eef2f7;
+}
+
+.timeline-group.is-collapsed .timeline-list {
+  display: none;
 }
 
 /* =========================
-   ENTRY CARD
+   HISTORY ENTRY CARD
 ========================= */
 
 .timeline-item.history-entry-card {
   position: relative;
   display: block;
   min-height: 0;
-  border: 1px solid #e5e7eb;
-  background: #fbfdff;
-  border-radius: 22px;
   padding: 18px;
+  background: #fbfdff;
+  border: 1px solid #e5e7eb;
+  border-radius: 22px;
   transition: transform 0.18s ease, box-shadow 0.18s ease,
     border-color 0.18s ease;
 }
 
 .timeline-item.history-entry-card:hover {
-  transform: translateY(-1px);
   border-color: #d7deea;
   box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
+  transform: translateY(-1px);
 }
 
 .timeline-main.history-entry-link {
@@ -220,15 +359,16 @@
   align-items: flex-start;
   justify-content: flex-start;
   gap: 14px;
-  text-decoration: none;
-  color: inherit;
+  padding: 0;
   background: transparent;
   border: none;
   border-radius: 0;
-  padding: 0;
+  color: inherit;
+  text-decoration: none;
 }
 
-.history-entry-main {
+.history-entry-main,
+.history-entry-right {
   width: 100%;
   padding-right: 56px;
   box-sizing: border-box;
@@ -239,22 +379,16 @@
   margin: 0 0 8px;
   color: #111827;
   font-size: 22px;
-  line-height: 1.15;
   font-weight: 900;
+  line-height: 1.15;
 }
 
 .history-entry-main span {
   display: block;
   color: #6b7280;
   font-size: 15px;
-  line-height: 1.5;
   font-weight: 700;
-}
-
-.history-entry-right {
-  width: 100%;
-  padding-right: 56px;
-  box-sizing: border-box;
+  line-height: 1.5;
 }
 
 .timeline-right.history-entry-right {
@@ -264,8 +398,8 @@
 .history-debt {
   display: inline-block;
   color: #b42318;
-  font-weight: 900;
   font-size: 16px;
+  font-weight: 900;
   line-height: 1.4;
 }
 
@@ -277,6 +411,9 @@
   position: absolute;
   top: 14px;
   right: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 42px;
   height: 42px;
   border: none;
@@ -284,22 +421,19 @@
   background: #fff1f1;
   color: #c0392b;
   cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
 }
 
 .history-entry-delete-btn svg {
+  display: block;
   width: 20px;
   height: 20px;
-  display: block;
 }
 
 .history-entry-delete-btn:hover {
   background: #ffe3e3;
-  transform: translateY(-1px);
   box-shadow: 0 8px 18px rgba(192, 57, 43, 0.12);
+  transform: translateY(-1px);
 }
 
 .history-entry-delete-btn:active {
@@ -307,209 +441,7 @@
 }
 
 /* =========================
-   BUTTONS + MODAL
-========================= */
-
-.danger-btn {
-  border: none;
-  background: #fee2e2;
-  color: #b91c1c;
-  border-radius: 14px;
-  padding: 12px 16px;
-  font-weight: 800;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.18s ease, transform 0.18s ease;
-}
-
-.danger-btn:hover {
-  background: #fecaca;
-  transform: translateY(-1px);
-}
-
-.history-delete-month-btn {
-  align-self: flex-start;
-}
-
-.ghost-btn {
-  border: 1px solid #e5e7eb;
-  background: #ffffff;
-  color: #111827;
-  border-radius: 12px;
-  padding: 12px 16px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.confirm-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 999;
-  background: rgba(15, 23, 42, 0.48);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 18px;
-}
-
-.confirm-modal {
-  width: min(420px, 100%);
-  background: #ffffff;
-  border-radius: 18px;
-  padding: 20px;
-  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.25);
-}
-
-.confirm-badge {
-  display: inline-flex;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: #eef2ff;
-  color: #4f46e5;
-  font-size: 12px;
-  font-weight: 800;
-  margin-bottom: 10px;
-}
-
-.confirm-modal h3 {
-  margin: 0 0 8px;
-  color: #111827;
-}
-
-.confirm-modal p {
-  margin: 0;
-  color: #6b7280;
-  line-height: 1.5;
-}
-
-.confirm-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 18px;
-}
-
-.confirm-danger {
-  background: #dc2626;
-  color: #ffffff;
-}
-
-.confirm-danger:hover {
-  background: #b91c1c;
-}
-
-/* =========================
-   RESPONSIVE
-========================= */
-
-@media (max-width: 900px) {
-  .history-filter-head {
-    flex-direction: column;
-  }
-
-  .history-clear-filter-btn {
-    width: 100%;
-  }
-
-  .history-filter-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .history-search-field {
-    grid-column: 1 / -1;
-  }
-
-  .timeline-group-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .history-delete-month-btn {
-    width: 100%;
-  }
-
-  .timeline-list {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 560px) {
-  .history-page {
-    padding: 16px;
-  }
-
-  .history-topbar h1 {
-    font-size: 30px;
-  }
-
-  .history-filter-card {
-    padding: 16px;
-    border-radius: 22px;
-  }
-
-  .history-filter-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .history-search-field {
-    grid-column: auto;
-  }
-
-  .timeline-group {
-    border-radius: 24px;
-  }
-
-  .timeline-group-header {
-    padding: 20px 18px 16px;
-  }
-
-  .timeline-group-header h2 {
-    font-size: 34px;
-  }
-
-  .timeline-list {
-    padding: 14px;
-    gap: 12px;
-  }
-
-  .timeline-item.history-entry-card {
-    padding: 16px;
-    border-radius: 20px;
-  }
-
-  .history-entry-main,
-  .history-entry-right {
-    padding-right: 50px;
-  }
-
-  .history-entry-main strong {
-    font-size: 20px;
-  }
-
-  .history-entry-main span {
-    font-size: 14px;
-  }
-
-  .history-debt {
-    font-size: 15px;
-  }
-
-  .history-entry-delete-btn {
-    top: 12px;
-    right: 12px;
-    width: 40px;
-    height: 40px;
-    border-radius: 14px;
-  }
-
-  .history-entry-delete-btn svg {
-    width: 19px;
-    height: 19px;
-  }
-}
-/* =========================
-   DISTINGUISH BLOCKS
+   BLOCK COLORS
 ========================= */
 
 .timeline-item.history-entry-card.block-a {
@@ -579,11 +511,249 @@
 .history-tenant-name {
   color: #6b7280;
   font-size: 15px;
-  line-height: 1.5;
   font-weight: 700;
+  line-height: 1.5;
+}
+
+/* =========================
+   BUTTONS
+========================= */
+
+.danger-btn {
+  padding: 12px 16px;
+  border: none;
+  border-radius: 14px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+
+.danger-btn:hover {
+  background: #fecaca;
+  transform: translateY(-1px);
+}
+
+.history-delete-month-btn {
+  align-self: flex-start;
+  margin: 24px 24px 0 0;
+}
+
+.ghost-btn {
+  padding: 12px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #111827;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* =========================
+   CONFIRM MODAL
+========================= */
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(15, 23, 42, 0.48);
+}
+
+.confirm-modal {
+  width: min(420px, 100%);
+  padding: 20px;
+  background: #ffffff;
+  border-radius: 18px;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.25);
+}
+
+.confirm-badge {
+  display: inline-flex;
+  margin-bottom: 10px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4f46e5;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.confirm-modal h3 {
+  margin: 0 0 8px;
+  color: #111827;
+}
+
+.confirm-modal p {
+  margin: 0;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.confirm-danger {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.confirm-danger:hover {
+  background: #b91c1c;
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
+
+@media (max-width: 900px) {
+  .history-filter-head {
+    flex-direction: column;
+  }
+
+  .history-clear-filter-btn {
+    width: 100%;
+  }
+
+  .history-filter-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .history-search-field {
+    grid-column: 1 / -1;
+  }
+
+  .timeline-group-header {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .timeline-group-toggle {
+    padding: 22px 18px 16px;
+  }
+
+  .history-delete-month-btn {
+    width: calc(100% - 36px);
+    margin: 0 18px 18px;
+  }
+
+  .timeline-list {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 560px) {
+  .history-page {
+    padding: 16px;
+  }
+
+  .history-topbar h1 {
+    font-size: 30px;
+  }
+
+  .history-filter-card {
+    padding: 16px;
+    border-radius: 22px;
+  }
+
+  .history-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .history-search-field {
+    grid-column: auto;
+  }
+
+  .timeline-group {
+    border-radius: 24px;
+  }
+
+  .month-header-top h2 {
+    font-size: 36px;
+  }
+
+  .month-header-top span {
+    font-size: 14px;
+  }
+
+  .month-toggle-icon {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+  }
+
+  .month-toggle-icon svg {
+    width: 21px;
+    height: 21px;
+  }
+
+  .month-summary-grid {
+    grid-template-columns: 1fr;
+    gap: 9px;
+    margin-top: 15px;
+  }
+
+  .month-summary-card {
+    padding: 12px 13px;
+    border-radius: 16px;
+  }
+
+  .month-summary-card strong {
+    font-size: 16px;
+  }
+
+  .timeline-list {
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .timeline-item.history-entry-card {
+    padding: 16px;
+    border-radius: 20px;
+  }
+
+  .history-entry-main,
+  .history-entry-right {
+    padding-right: 50px;
+  }
+
+  .history-entry-main strong {
+    font-size: 20px;
+  }
+
+  .history-entry-main span,
+  .history-tenant-name {
+    font-size: 14px;
+  }
+
+  .history-debt {
+    font-size: 15px;
+  }
+
+  .history-entry-delete-btn {
+    top: 12px;
+    right: 12px;
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
+  }
+
+  .history-entry-delete-btn svg {
+    width: 19px;
+    height: 19px;
+  }
+
   .history-entry-meta {
     gap: 7px;
   }
@@ -592,9 +762,5 @@
     min-height: 26px;
     padding: 6px 10px;
     font-size: 11px;
-  }
-
-  .history-tenant-name {
-    font-size: 14px;
   }
 }

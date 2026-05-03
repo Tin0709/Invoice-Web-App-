@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import AccountMenu from "../components/AccountMenu";
@@ -32,6 +33,28 @@ function parseMoneyInput(value) {
 
 function clampNonNegative(number) {
   return number < 0 ? 0 : number;
+}
+
+const DRAFT_NOTICE_KEY = "motel_receipt_invoice_draft_notice";
+
+function readDraftNotice() {
+  try {
+    const raw = localStorage.getItem(DRAFT_NOTICE_KEY);
+
+    if (!raw) return "";
+
+    const notice = JSON.parse(raw);
+
+    localStorage.removeItem(DRAFT_NOTICE_KEY);
+
+    return (
+      notice?.message ||
+      "⚠️ Phiếu thu chưa được lưu. Mình đã giữ lại dưới dạng bản nháp."
+    );
+  } catch {
+    localStorage.removeItem(DRAFT_NOTICE_KEY);
+    return "";
+  }
 }
 
 function getRoomCardMoney(room, latestInvoice) {
@@ -82,6 +105,7 @@ export default function HomePage() {
   const [roomInputs, setRoomInputs] = useState({});
   const [openAddRoomBlockId, setOpenAddRoomBlockId] = useState(null);
   const [roomToast, setRoomToast] = useState("");
+  const [draftToast, setDraftToast] = useState("");
 
   const [renameBlockModal, setRenameBlockModal] = useState({
     open: false,
@@ -141,6 +165,18 @@ export default function HomePage() {
 
   useEffect(() => {
     refreshData();
+
+    const draftMessage = readDraftNotice();
+
+    if (!draftMessage) return;
+
+    setDraftToast(draftMessage);
+
+    const timer = setTimeout(() => {
+      setDraftToast("");
+    }, 2600);
+
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.key]);
 
@@ -482,13 +518,23 @@ export default function HomePage() {
     return getAllInvoicesFlat(data).slice(0, 6);
   }, [data]);
 
+  const visibleToast = roomToast || draftToast;
+  const isDraftToast = !roomToast && Boolean(draftToast);
+
   return (
     <>
-      {roomToast && (
-        <div className="save-toast no-print" role="status">
-          {roomToast}
-        </div>
-      )}
+      {visibleToast &&
+        createPortal(
+          <div
+            className={`save-toast no-print ${
+              isDraftToast ? "draft-toast" : ""
+            }`}
+            role="status"
+          >
+            {visibleToast}
+          </div>,
+          document.body
+        )}
 
       <div className="home-page">
         <div className="home-shell">

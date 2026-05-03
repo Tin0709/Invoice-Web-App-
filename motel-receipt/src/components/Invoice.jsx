@@ -1,6 +1,7 @@
 import { createPortal } from "react-dom";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "../styles/invoice.css";
+import { getAuthUser } from "../utils/auth";
 import {
   getInvoiceByPeriod,
   getPreviousInvoice,
@@ -140,6 +141,113 @@ const getInvoiceDebt = (invoice) => {
   return clampNonNegative(total - paid);
 };
 
+const DRAFT_NOTICE_KEY = "motel_receipt_invoice_draft_notice";
+
+function getDraftUserKey() {
+  const user = getAuthUser();
+
+  return user?.id || user?.email || "guest";
+}
+
+function getInvoiceDraftKey({ blockId, roomId, year, month }) {
+  return [
+    "motel_receipt_invoice_draft",
+    getDraftUserKey(),
+    blockId || "no-block",
+    roomId || "no-room",
+    year || "no-year",
+    month || "no-month",
+  ].join("_");
+}
+
+function loadInvoiceDraft({ blockId, roomId, year, month }) {
+  try {
+    if (!blockId || !roomId || !year || !month) return null;
+
+    const draftKey = getInvoiceDraftKey({ blockId, roomId, year, month });
+    const raw = localStorage.getItem(draftKey);
+
+    if (!raw) return null;
+
+    const draft = JSON.parse(raw);
+
+    if (!draft?.meta || !draft?.f) return null;
+
+    return {
+      ...draft,
+      draftKey,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function saveInvoiceDraft({ blockId, roomId, year, month, meta, f, roomName }) {
+  try {
+    if (!blockId || !roomId || !year || !month) return null;
+
+    const draftKey = getInvoiceDraftKey({ blockId, roomId, year, month });
+    const period = `${String(month).padStart(2, "0")}/${year}`;
+    const safeRoomName = roomName || meta?.room || "phòng này";
+
+    const draft = {
+      blockId,
+      roomId,
+      year,
+      month,
+      meta,
+      f,
+      updatedAt: Date.now(),
+    };
+
+    localStorage.setItem(draftKey, JSON.stringify(draft));
+
+    localStorage.setItem(
+      DRAFT_NOTICE_KEY,
+      JSON.stringify({
+        draftKey,
+        roomName: safeRoomName,
+        period,
+        message: `⚠️ Phiếu thu của ${safeRoomName} tháng ${period} chưa được lưu. Mình đã giữ lại dưới dạng bản nháp.`,
+        updatedAt: Date.now(),
+      })
+    );
+
+    return draftKey;
+  } catch {
+    return null;
+  }
+}
+
+function clearInvoiceDraft({ blockId, roomId, year, month }) {
+  try {
+    if (!blockId || !roomId || !year || !month) return null;
+
+    const draftKey = getInvoiceDraftKey({ blockId, roomId, year, month });
+    localStorage.removeItem(draftKey);
+
+    return draftKey;
+  } catch {
+    return null;
+  }
+}
+
+function clearDraftNotice(draftKey) {
+  try {
+    const raw = localStorage.getItem(DRAFT_NOTICE_KEY);
+
+    if (!raw) return;
+
+    const notice = JSON.parse(raw);
+
+    if (!draftKey || notice?.draftKey === draftKey) {
+      localStorage.removeItem(DRAFT_NOTICE_KEY);
+    }
+  } catch {
+    localStorage.removeItem(DRAFT_NOTICE_KEY);
+  }
+}
+
 const createInitialInvoiceState = ({
   blockId,
   roomId,
@@ -220,9 +328,20 @@ const createInitialInvoiceState = ({
         paid: "",
       };
 
+  const draft = loadInvoiceDraft({
+    blockId,
+    roomId,
+    year,
+    month,
+  });
+
   return {
-    meta,
-    f,
+    meta: draft?.meta || meta,
+    f: draft?.f || f,
+    baseMeta: meta,
+    baseF: f,
+    draftRestored: Boolean(draft),
+    draftUpdatedAt: draft?.updatedAt || null,
   };
 };
 
@@ -433,6 +552,9 @@ export default function Invoice({
   const [f, setF] = useState(initialState.f);
   const [saveMessage, setSaveMessage] = useState("");
 
+  const draftRestoreToastShownRef = useRef(false);
+  const latestDraftRef = useRef(null);
+
   const {
     y: year,
     m: month,
@@ -445,10 +567,10 @@ export default function Invoice({
 
   const [lastSavedSnapshot, setLastSavedSnapshot] = useState(() =>
     JSON.stringify({
-      meta: initialState.meta,
-      f: initialState.f,
-      year: splitISO(initialState.meta.date).y,
-      month: splitISO(initialState.meta.date).m,
+      meta: initialState.baseMeta || initialState.meta,
+      f: initialState.baseF || initialState.f,
+      year: splitISO((initialState.baseMeta || initialState.meta).date).y,
+      month: splitISO((initialState.baseMeta || initialState.meta).date).m,
       roomId,
       blockId,
     })
@@ -508,11 +630,61 @@ export default function Invoice({
   const isDirty =
     lastSavedSnapshot !== null && buildSnapshot() !== lastSavedSnapshot;
 
+  latestDraftRef.current = {
+    isDirty,
+    blockId,
+    roomId,
+    year,
+    month,
+    meta,
+    f,
+    roomName: meta.room || roomText,
+  };
+
   useEffect(() => {
     if (typeof onDirtyChange === "function") {
       onDirtyChange(isDirty);
     }
   }, [isDirty, onDirtyChange]);
+
+  useEffect(() => {
+    if (!isDirty || !blockId || !roomId || !year || !month) return;
+
+    saveInvoiceDraft({
+      blockId,
+      roomId,
+      year,
+      month,
+      meta,
+      f,
+      roomName: meta.room || roomText,
+    });
+  }, [isDirty, blockId, roomId, year, month, meta, f, roomText]);
+
+  useEffect(() => {
+    return () => {
+      const latestDraft = latestDraftRef.current;
+
+      if (!latestDraft?.isDirty) return;
+
+      saveInvoiceDraft(latestDraft);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!initialState.draftRestored) return;
+    if (draftRestoreToastShownRef.current) return;
+
+    draftRestoreToastShownRef.current = true;
+
+    setSaveMessage("📝 Đã khôi phục bản nháp chưa lưu.");
+
+    const timer = setTimeout(() => {
+      setSaveMessage("");
+    }, 2200);
+
+    return () => clearTimeout(timer);
+  }, [initialState.draftRestored]);
 
   useEffect(() => {
     const handleBeforeUnload = (e) => {
@@ -706,6 +878,15 @@ export default function Invoice({
 
       const refreshedData = await loadDataFromSupabase();
       saveData(refreshedData);
+
+      const clearedDraftKey = clearInvoiceDraft({
+        blockId,
+        roomId,
+        year,
+        month,
+      });
+
+      clearDraftNotice(clearedDraftKey);
 
       const snapshotAfterSave = JSON.stringify({
         meta,

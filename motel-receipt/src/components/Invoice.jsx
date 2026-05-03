@@ -314,9 +314,7 @@ function saveInvoiceDraftToLocal({
         draftKey,
         roomName: roomName || meta?.room || "phòng này",
         period: `${String(month).padStart(2, "0")}/${year}`,
-        message: `⚠️ Phiếu thu của ${
-          roomName || meta?.room || "phòng này"
-        } chưa được lưu. Mình đã giữ lại dưới dạng bản nháp.`,
+        message: "⚠️ Phiếu thu chưa được lưu.",
         updatedAt: Date.now(),
       })
     );
@@ -668,6 +666,7 @@ export default function Invoice({
   const serverDraftPeriodRef = useRef("");
   const serverSaveTimerRef = useRef(null);
   const latestDraftPayloadRef = useRef(null);
+  const saveMessageTimerRef = useRef(null);
 
   const {
     y: year,
@@ -744,6 +743,23 @@ export default function Invoice({
   const isDirty =
     lastSavedSnapshot !== null && buildSnapshot() !== lastSavedSnapshot;
 
+  const showDropdownToast = useCallback((message, duration = 1800) => {
+    if (saveMessageTimerRef.current) {
+      clearTimeout(saveMessageTimerRef.current);
+    }
+
+    setSaveMessage(message);
+
+    if (duration > 0) {
+      saveMessageTimerRef.current = setTimeout(() => {
+        setSaveMessage("");
+        saveMessageTimerRef.current = null;
+      }, duration);
+    } else {
+      saveMessageTimerRef.current = null;
+    }
+  }, []);
+
   useEffect(() => {
     if (typeof onDirtyChange === "function") {
       onDirtyChange(isDirty);
@@ -786,11 +802,7 @@ export default function Invoice({
         setYearText(nextDateParts.y || year);
         setRoomText(serverDraft.meta?.room || meta.room || "");
 
-        setSaveMessage("📝 Đã khôi phục bản nháp chưa lưu.");
-
-        setTimeout(() => {
-          setSaveMessage("");
-        }, 2200);
+        showDropdownToast("📝 Đã khôi phục bản nháp chưa lưu.", 2200);
       } catch (error) {
         console.error("Load invoice draft from Supabase error:", error);
       }
@@ -858,19 +870,22 @@ export default function Invoice({
   }, []);
 
   useEffect(() => {
-    if (!initialState.draftRestored) return;
-    if (draftRestoreToastShownRef.current) return;
+    return () => {
+      if (saveMessageTimerRef.current) {
+        clearTimeout(saveMessageTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!initialState.draftRestored) return undefined;
+    if (draftRestoreToastShownRef.current) return undefined;
 
     draftRestoreToastShownRef.current = true;
+    showDropdownToast("📝 Đã khôi phục bản nháp chưa lưu.", 2200);
 
-    setSaveMessage("📝 Đã khôi phục bản nháp chưa lưu.");
-
-    const timer = setTimeout(() => {
-      setSaveMessage("");
-    }, 2200);
-
-    return () => clearTimeout(timer);
-  }, [initialState.draftRestored]);
+    return undefined;
+  }, [initialState.draftRestored, showDropdownToast]);
 
   useEffect(() => {
     const handleBeforeUnload = (e) => {
@@ -970,20 +985,47 @@ export default function Invoice({
   };
 
   const applyPrevOld = () => {
-    if (!year || !month) return;
+    if (!year || !month) {
+      showDropdownToast("⚠️ Vui lòng chọn tháng và năm hợp lệ.");
+      return;
+    }
 
     const freshRoom = findFreshRoom(blockId, roomId, roomData);
-    if (!freshRoom) return;
+
+    if (!freshRoom) {
+      showDropdownToast("⚠️ Không tìm thấy thông tin phòng.");
+      return;
+    }
 
     const prev = getPreviousInvoice(freshRoom, Number(year), Number(month));
-    if (!prev) return;
+
+    if (!prev) {
+      showDropdownToast("⚠️ Không có dữ liệu tháng trước để lấy.");
+      return;
+    }
+
+    const nextElecOld = prev.elecNew ? digits(prev.elecNew) : "";
+    const nextWaterOld = prev.waterNew ? digits(prev.waterNew) : "";
+    const nextPreviousDebt = fmtVND(getInvoiceDebt(prev));
+
+    const alreadyUpdated =
+      String(f.elecOld || "") === String(nextElecOld || "") &&
+      String(f.waterOld || "") === String(nextWaterOld || "") &&
+      String(f.previousDebt || "") === String(nextPreviousDebt || "");
+
+    if (alreadyUpdated) {
+      showDropdownToast("ℹ️ Số cũ tháng trước đã được cập nhật rồi.");
+      return;
+    }
 
     setF((s) => ({
       ...s,
-      elecOld: prev.elecNew ? digits(prev.elecNew) : s.elecOld,
-      waterOld: prev.waterNew ? digits(prev.waterNew) : s.waterOld,
-      previousDebt: fmtVND(getInvoiceDebt(prev)),
+      elecOld: nextElecOld || s.elecOld,
+      waterOld: nextWaterOld || s.waterOld,
+      previousDebt: nextPreviousDebt,
     }));
+
+    showDropdownToast("✅ Đã lấy số cũ tháng trước.");
   };
 
   const resetNumbers = () => {
@@ -1053,7 +1095,7 @@ export default function Invoice({
     };
 
     try {
-      setSaveMessage("Đang lưu phiếu...");
+      showDropdownToast("Đang lưu phiếu...", 0);
 
       await upsertInvoiceOnServer({
         blockId,
@@ -1091,24 +1133,16 @@ export default function Invoice({
       });
 
       setLastSavedSnapshot(snapshotAfterSave);
-      setSaveMessage("Đã lưu phiếu thành công.");
-
-      setTimeout(() => {
-        setSaveMessage("");
-      }, 1800);
+      showDropdownToast("Đã lưu phiếu thành công.", 1800);
 
       return true;
     } catch (error) {
       console.error("Save invoice error:", error);
-      setSaveMessage(error.message || "Không thể lưu phiếu.");
-
-      setTimeout(() => {
-        setSaveMessage("");
-      }, 2400);
+      showDropdownToast(error.message || "Không thể lưu phiếu.", 2400);
 
       return false;
     }
-  }, [blockId, roomId, year, month, meta, f, calc]);
+  }, [blockId, roomId, year, month, meta, f, calc, showDropdownToast]);
 
   useEffect(() => {
     if (typeof registerSaveHandler === "function") {

@@ -480,9 +480,7 @@ export default function HomePage() {
 
       if (!raw) return;
 
-      const notice = JSON.parse(raw);
-
-      setDraftToast(notice?.message || "⚠️ Phiếu thu chưa được lưu.");
+      setDraftToast("⚠️ Phiếu thu chưa được lưu.");
 
       setIsDraftToastOpen(false);
       setIsDraftToastClosing(false);

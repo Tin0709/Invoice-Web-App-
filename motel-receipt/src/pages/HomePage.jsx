@@ -25,6 +25,7 @@ import {
 
 const INVOICE_DRAFT_PREFIX = "motel_receipt_invoice_draft";
 const DRAFT_NOTICE_KEY = "motel_receipt_invoice_draft_notice";
+const HOME_LAST_ACTIVE_BLOCK_KEY = "motel_receipt_home_last_active_block";
 
 function formatMoneyInput(value) {
   const raw = String(value ?? "").replace(/[^\d]/g, "");
@@ -69,6 +70,24 @@ function getDraftMapKey(blockId, roomId) {
 
 function getInvoiceDraftPrefixForCurrentUser() {
   return `${INVOICE_DRAFT_PREFIX}_${getDraftUserKey()}_`;
+}
+
+function rememberActiveBlock(blockId) {
+  if (!blockId) return;
+
+  try {
+    localStorage.setItem(HOME_LAST_ACTIVE_BLOCK_KEY, String(blockId));
+  } catch (error) {
+    console.error("Remember active block error:", error);
+  }
+}
+
+function getRememberedActiveBlock() {
+  try {
+    return localStorage.getItem(HOME_LAST_ACTIVE_BLOCK_KEY);
+  } catch {
+    return null;
+  }
 }
 
 function normalizeServerDraft(row) {
@@ -551,6 +570,15 @@ export default function HomePage() {
       saveData(serverData);
 
       setExpandedBlockId((currentBlockId) => {
+        const rememberedBlockId =
+          location.state?.activeBlockId || getRememberedActiveBlock();
+
+        const rememberedStillExists = serverData.blocks.some(
+          (block) => block.id === rememberedBlockId
+        );
+
+        if (rememberedStillExists) return rememberedBlockId;
+
         const currentStillExists = serverData.blocks.some(
           (block) => block.id === currentBlockId
         );
@@ -683,6 +711,9 @@ export default function HomePage() {
   };
 
   const openRoomManageModal = (block, room) => {
+    rememberActiveBlock(block.id);
+    setExpandedBlockId(block.id);
+
     setRoomManageModal({
       open: true,
       blockId: block.id,
@@ -738,6 +769,8 @@ export default function HomePage() {
         return nextData;
       });
 
+      rememberActiveBlock(roomManageModal.blockId);
+      setExpandedBlockId(roomManageModal.blockId);
       closeRoomManageModal();
       showRoomToast("✅ Đã đổi tên phòng.");
     } catch (error) {
@@ -748,6 +781,9 @@ export default function HomePage() {
 
   const handleRoomManageDelete = () => {
     const { blockId, roomId } = roomManageModal;
+
+    rememberActiveBlock(blockId);
+    setExpandedBlockId(blockId);
 
     // Giữ modal "Tuỳ chọn phòng" ở phía sau confirm.
     // Khi bấm Huỷ, confirm đóng và người dùng quay lại modal này.
@@ -995,6 +1031,8 @@ export default function HomePage() {
           return nextData;
         });
 
+        rememberActiveBlock(blockId);
+        setExpandedBlockId(blockId);
         closeRoomManageModal();
         showRoomToast("Đã xoá phòng.");
       },
@@ -1196,6 +1234,10 @@ export default function HomePage() {
                                       <Link
                                         className="room-title-area"
                                         to={`/invoice/${block.id}/${room.id}${invoiceQuery}`}
+                                        state={{ activeBlockId: block.id }}
+                                        onClick={() =>
+                                          rememberActiveBlock(block.id)
+                                        }
                                       >
                                         <h3>{displayRoomName}</h3>
                                       </Link>
@@ -1240,6 +1282,10 @@ export default function HomePage() {
                                     <Link
                                       className="room-main room-card-click-area"
                                       to={`/invoice/${block.id}/${room.id}${invoiceQuery}`}
+                                      state={{ activeBlockId: block.id }}
+                                      onClick={() =>
+                                        rememberActiveBlock(block.id)
+                                      }
                                     >
                                       <div className="room-person-row">
                                         <span
@@ -1348,6 +1394,8 @@ export default function HomePage() {
                         key={`${item.blockId}-${item.roomId}-${item.month}-${item.year}-${index}`}
                         className="history-item"
                         to={`/invoice/${item.blockId}/${item.roomId}?year=${item.year}&month=${item.month}`}
+                        state={{ activeBlockId: item.blockId }}
+                        onClick={() => rememberActiveBlock(item.blockId)}
                       >
                         <div>
                           <strong>
@@ -1688,6 +1736,23 @@ export default function HomePage() {
       {confirmState.open && (
         <div className="confirm-overlay" onClick={closeConfirm}>
           <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="confirm-icon danger" aria-hidden="true">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 6h18" />
+                <path d="M8 6V4h8v2" />
+                <path d="M19 6l-1 14H6L5 6" />
+                <path d="M10 11v5" />
+                <path d="M14 11v5" />
+              </svg>
+            </div>
+
             <div className="confirm-badge">Xác nhận</div>
 
             <h3>{confirmState.title}</h3>
@@ -1696,7 +1761,7 @@ export default function HomePage() {
             <div className="confirm-actions">
               <button
                 type="button"
-                className="ghost-btn"
+                className="confirm-cancel-btn"
                 onClick={closeConfirm}
               >
                 Huỷ
@@ -1704,7 +1769,7 @@ export default function HomePage() {
 
               <button
                 type="button"
-                className="danger-btn confirm-danger"
+                className="confirm-delete-btn"
                 onClick={handleConfirmOk}
               >
                 Xoá

@@ -302,6 +302,21 @@ function getRoomCardMoney(room, latestInvoice, draft) {
   });
 }
 
+function renderConfirmMessage(message) {
+  const text = String(message || "");
+  const parts = text.split(/("[^"]+")/g);
+
+  return parts.map((part, index) => {
+    const isQuoted = part.startsWith('"') && part.endsWith('"');
+
+    if (!isQuoted) {
+      return part;
+    }
+
+    return <strong key={`${part}-${index}`}>{part.slice(1, -1)}</strong>;
+  });
+}
+
 export default function HomePage() {
   const location = useLocation();
 
@@ -1736,27 +1751,10 @@ export default function HomePage() {
       {confirmState.open && (
         <div className="confirm-overlay" onClick={closeConfirm}>
           <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="confirm-icon danger" aria-hidden="true">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M3 6h18" />
-                <path d="M8 6V4h8v2" />
-                <path d="M19 6l-1 14H6L5 6" />
-                <path d="M10 11v5" />
-                <path d="M14 11v5" />
-              </svg>
-            </div>
-
             <div className="confirm-badge">Xác nhận</div>
 
             <h3>{confirmState.title}</h3>
-            <p>{confirmState.message}</p>
+            <p>{renderConfirmMessage(confirmState.message)}</p>
 
             <div className="confirm-actions">
               <button

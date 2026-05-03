@@ -302,6 +302,19 @@ function getRoomCardMoney(room, latestInvoice, draft) {
   });
 }
 
+function getRoomSortName(room) {
+  return String(room?.roomName || "").trim();
+}
+
+function sortRoomsByName(rooms) {
+  return [...(rooms || [])].sort((roomA, roomB) =>
+    getRoomSortName(roomA).localeCompare(getRoomSortName(roomB), "vi", {
+      numeric: true,
+      sensitivity: "base",
+    })
+  );
+}
+
 function renderConfirmMessage(message) {
   const text = String(message || "");
   const parts = text.split(/("[^"]+")/g);
@@ -376,6 +389,7 @@ export default function HomePage() {
     message: "",
     onConfirm: null,
   });
+  const [isConfirmLoading, setIsConfirmLoading] = useState(false);
 
   const showRoomToast = (message) => {
     setRoomToast(message);
@@ -668,7 +682,7 @@ export default function HomePage() {
     });
   };
 
-  const closeConfirm = () => {
+  const resetConfirmState = () => {
     setConfirmState({
       open: false,
       type: "",
@@ -678,16 +692,27 @@ export default function HomePage() {
     });
   };
 
+  const closeConfirm = () => {
+    if (isConfirmLoading) return;
+    resetConfirmState();
+  };
+
   const handleConfirmOk = async () => {
+    if (isConfirmLoading) return;
+
+    setIsConfirmLoading(true);
+
     try {
       if (typeof confirmState.onConfirm === "function") {
         await confirmState.onConfirm();
       }
+
+      resetConfirmState();
     } catch (error) {
       console.error(error);
       showRoomToast(error.message || "Có lỗi xảy ra.");
     } finally {
-      closeConfirm();
+      setIsConfirmLoading(false);
     }
   };
 
@@ -1057,17 +1082,24 @@ export default function HomePage() {
   const filteredBlocks = useMemo(() => {
     const keyword = search.trim().toLowerCase();
 
-    if (!keyword) return data.blocks;
+    if (!keyword) {
+      return data.blocks.map((block) => ({
+        ...block,
+        rooms: sortRoomsByName(block.rooms),
+      }));
+    }
 
     return data.blocks
       .map((block) => ({
         ...block,
-        rooms: block.rooms.filter((room) => {
-          const roomName = String(room.roomName || "").toLowerCase();
-          const tenantName = String(room.tenantName || "").toLowerCase();
+        rooms: sortRoomsByName(
+          block.rooms.filter((room) => {
+            const roomName = String(room.roomName || "").toLowerCase();
+            const tenantName = String(room.tenantName || "").toLowerCase();
 
-          return roomName.includes(keyword) || tenantName.includes(keyword);
-        }),
+            return roomName.includes(keyword) || tenantName.includes(keyword);
+          })
+        ),
       }))
       .filter(
         (block) =>
@@ -1761,16 +1793,27 @@ export default function HomePage() {
                 type="button"
                 className="confirm-cancel-btn"
                 onClick={closeConfirm}
+                disabled={isConfirmLoading}
               >
                 Huỷ
               </button>
 
               <button
                 type="button"
-                className="confirm-delete-btn"
+                className={`confirm-delete-btn ${
+                  isConfirmLoading ? "is-loading" : ""
+                }`}
                 onClick={handleConfirmOk}
+                disabled={isConfirmLoading}
               >
-                Xoá
+                {isConfirmLoading ? (
+                  <>
+                    <span className="confirm-spinner" aria-hidden="true" />
+                    Đang xoá...
+                  </>
+                ) : (
+                  "Xoá"
+                )}
               </button>
             </div>
           </div>

@@ -3238,3 +3238,176 @@
     font-size: 15.5px;
   }
 }
+/* =========================
+   FINAL FIX: ROOM MANAGE ICON + CONFIRM LOADING
+========================= */
+
+/* Đảm bảo modal Tuỳ chọn phòng làm mốc cho 2 nút góc trên */
+.room-manage-modal-new {
+  position: relative !important;
+}
+
+/* Nút xoá phòng góc trái */
+.room-manage-delete-icon-btn {
+  position: absolute !important;
+  top: 24px !important;
+  left: 24px !important;
+  width: 50px !important;
+  height: 50px !important;
+  min-width: 50px !important;
+  border: none !important;
+  border-radius: 999px !important;
+  background: #fee2e2 !important;
+  color: #dc2626 !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  z-index: 3 !important;
+  box-shadow: none !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}
+
+.room-manage-delete-icon-btn svg {
+  width: 24px !important;
+  height: 24px !important;
+  display: block !important;
+  color: currentColor !important;
+  stroke: currentColor !important;
+  fill: none !important;
+}
+
+.room-manage-delete-icon-btn:hover {
+  background: #fecaca !important;
+  transform: translateY(-1px);
+}
+
+.room-manage-delete-icon-btn:active {
+  transform: scale(0.95);
+}
+
+/* Nút X luôn ở góc phải */
+.room-manage-modal-new > .add-room-modal-x {
+  position: absolute !important;
+  top: 24px !important;
+  right: 24px !important;
+  left: auto !important;
+  width: 50px !important;
+  height: 50px !important;
+  min-width: 50px !important;
+  border-radius: 999px !important;
+  background: #f3f4f6 !important;
+  color: #111827 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 3 !important;
+}
+
+/* Confirm modal nằm trên cùng */
+.confirm-overlay {
+  z-index: 2147483000 !important;
+}
+
+/* Hai nút confirm luôn đều và căn giữa */
+.confirm-actions {
+  width: min(420px, 100%) !important;
+  margin: 26px auto 0 !important;
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 14px !important;
+}
+
+.confirm-cancel-btn,
+.confirm-delete-btn {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 56px !important;
+  border-radius: 19px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 9px !important;
+  font-size: 18px !important;
+  font-weight: 950 !important;
+}
+
+.confirm-cancel-btn {
+  border: 1px solid #d1d5db !important;
+  background: #ffffff !important;
+  color: #111827 !important;
+}
+
+.confirm-delete-btn {
+  border: none !important;
+  background: #dc2626 !important;
+  color: #ffffff !important;
+  box-shadow: 0 14px 28px rgba(220, 38, 38, 0.2) !important;
+}
+
+.confirm-delete-btn:hover {
+  background: #b91c1c !important;
+}
+
+.confirm-delete-btn:disabled,
+.confirm-delete-btn.is-loading {
+  background: #dc2626 !important;
+  color: #ffffff !important;
+  opacity: 0.92 !important;
+  cursor: wait !important;
+}
+
+/* Spinner khi đang xoá */
+.confirm-spinner {
+  width: 18px !important;
+  height: 18px !important;
+  border: 3px solid rgba(255, 255, 255, 0.45) !important;
+  border-top-color: #ffffff !important;
+  border-radius: 999px !important;
+  display: inline-block !important;
+  animation: confirmSpin 0.75s linear infinite !important;
+}
+
+@keyframes confirmSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Mobile */
+@media (max-width: 620px) {
+  .room-manage-delete-icon-btn {
+    top: 18px !important;
+    left: 18px !important;
+    width: 46px !important;
+    height: 46px !important;
+    min-width: 46px !important;
+  }
+
+  .room-manage-modal-new > .add-room-modal-x {
+    top: 18px !important;
+    right: 18px !important;
+    width: 46px !important;
+    height: 46px !important;
+    min-width: 46px !important;
+  }
+
+  .confirm-actions {
+    gap: 12px !important;
+  }
+
+  .confirm-cancel-btn,
+  .confirm-delete-btn {
+    min-height: 54px !important;
+    border-radius: 18px !important;
+    font-size: 17px !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .confirm-actions {
+    grid-template-columns: 1fr !important;
+  }
+}

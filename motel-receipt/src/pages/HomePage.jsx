@@ -281,13 +281,18 @@ export default function HomePage() {
   const [roomToast, setRoomToast] = useState("");
   const [draftToast, setDraftToast] = useState("");
 
+  const draftToastRef = useRef(null);
   const draftToastTimerRef = useRef(null);
   const draftToastExitTimerRef = useRef(null);
+  const draftToastOpenRafRef = useRef(null);
   const draftToastStartYRef = useRef(0);
   const draftToastDragYRef = useRef(0);
   const draftToastPointerIdRef = useRef(null);
+  const draftToastStartTimeRef = useRef(0);
+  const draftToastRafRef = useRef(null);
 
   const [draftToastDragY, setDraftToastDragY] = useState(0);
+  const [isDraftToastOpen, setIsDraftToastOpen] = useState(false);
   const [isDraftToastDragging, setIsDraftToastDragging] = useState(false);
   const [isDraftToastClosing, setIsDraftToastClosing] = useState(false);
 
@@ -332,62 +337,102 @@ export default function HomePage() {
     }
   }
 
+  function clearDraftToastRaf() {
+    if (draftToastRafRef.current) {
+      cancelAnimationFrame(draftToastRafRef.current);
+      draftToastRafRef.current = null;
+    }
+  }
+
+  function clearDraftToastOpenRaf() {
+    if (draftToastOpenRafRef.current) {
+      cancelAnimationFrame(draftToastOpenRafRef.current);
+      draftToastOpenRafRef.current = null;
+    }
+  }
+
+  function applyDraftToastDrag(y) {
+    draftToastDragYRef.current = y;
+
+    if (draftToastRafRef.current) return;
+
+    draftToastRafRef.current = requestAnimationFrame(() => {
+      draftToastRef.current?.style.setProperty(
+        "--toast-drag-y",
+        `${draftToastDragYRef.current}px`
+      );
+
+      draftToastRafRef.current = null;
+    });
+  }
+
+  function resetDraftToastPosition() {
+    setDraftToastDragY(0);
+    draftToastDragYRef.current = 0;
+    draftToastRef.current?.style.setProperty("--toast-drag-y", "0px");
+  }
+
   function closeDraftToast(immediate = false) {
     clearDraftToastTimer();
     clearDraftToastExitTimer();
+    clearDraftToastRaf();
+    clearDraftToastOpenRaf();
 
     setIsDraftToastDragging(false);
     draftToastPointerIdRef.current = null;
 
     if (immediate) {
       setDraftToast("");
+      setIsDraftToastOpen(false);
       setIsDraftToastClosing(false);
-      setDraftToastDragY(0);
-      draftToastDragYRef.current = 0;
+      resetDraftToastPosition();
       return;
     }
 
+    setIsDraftToastOpen(false);
     setIsDraftToastClosing(true);
+    resetDraftToastPosition();
 
     draftToastExitTimerRef.current = setTimeout(() => {
       setDraftToast("");
+      setIsDraftToastOpen(false);
       setIsDraftToastClosing(false);
-      setDraftToastDragY(0);
-      draftToastDragYRef.current = 0;
-    }, 280);
-  }
-
-  function scheduleDraftToastClose(delay = 3600) {
-    clearDraftToastTimer();
-
-    draftToastTimerRef.current = setTimeout(() => {
-      closeDraftToast();
-    }, delay);
+      resetDraftToastPosition();
+    }, 380);
   }
 
   function handleDraftToastPointerDown(event) {
+    event.preventDefault();
+
     clearDraftToastTimer();
     clearDraftToastExitTimer();
+    clearDraftToastRaf();
+    clearDraftToastOpenRaf();
 
+    setIsDraftToastOpen(true);
     setIsDraftToastClosing(false);
 
     draftToastStartYRef.current = event.clientY;
     draftToastDragYRef.current = 0;
     draftToastPointerIdRef.current = event.pointerId;
+    draftToastStartTimeRef.current = Date.now();
 
+    setDraftToastDragY(0);
     setIsDraftToastDragging(true);
 
+    draftToastRef.current?.style.setProperty("--toast-drag-y", "0px");
     event.currentTarget.setPointerCapture?.(event.pointerId);
   }
 
   function handleDraftToastPointerMove(event) {
     if (draftToastPointerIdRef.current !== event.pointerId) return;
 
-    const deltaY = event.clientY - draftToastStartYRef.current;
-    const nextY = Math.min(0, Math.max(deltaY, -130));
+    event.preventDefault();
 
-    draftToastDragYRef.current = nextY;
-    setDraftToastDragY(nextY);
+    const deltaY = event.clientY - draftToastStartYRef.current;
+    const nextY = Math.min(0, Math.max(deltaY, -150));
+
+    applyDraftToastDrag(nextY);
   }
 
   function handleDraftToastPointerEnd(event) {
@@ -396,18 +441,18 @@ export default function HomePage() {
     event.currentTarget.releasePointerCapture?.(event.pointerId);
 
     const finalY = draftToastDragYRef.current;
+    const elapsed = Math.max(Date.now() - draftToastStartTimeRef.current, 1);
+    const velocity = finalY / elapsed;
 
     setIsDraftToastDragging(false);
     draftToastPointerIdRef.current = null;
 
-    if (finalY <= -48) {
+    if (finalY <= -42 || velocity < -0.35) {
       closeDraftToast();
       return;
     }
 
-    draftToastDragYRef.current = 0;
-    setDraftToastDragY(0);
-    scheduleDraftToastClose(2600);
+    resetDraftToastPosition();
   }
 
   const showDraftToastFromStorage = () => {
@@ -416,24 +461,40 @@ export default function HomePage() {
 
       if (!raw) return;
 
-      const notice = JSON.parse(raw);
+      setDraftToast("⚠️ Phiếu thu chưa được lưu.");
 
-      setDraftToast(
-        notice?.message ||
-          "⚠️ Phiếu thu chưa được lưu. Mình đã giữ lại dưới dạng bản nháp."
-      );
-
+      setIsDraftToastOpen(false);
       setIsDraftToastClosing(false);
-      setDraftToastDragY(0);
-      draftToastDragYRef.current = 0;
+      resetDraftToastPosition();
 
       localStorage.removeItem(DRAFT_NOTICE_KEY);
-
-      scheduleDraftToastClose(4200);
     } catch {
       localStorage.removeItem(DRAFT_NOTICE_KEY);
     }
   };
+
+  useEffect(() => {
+    if (!draftToast) return;
+
+    clearDraftToastOpenRaf();
+
+    setIsDraftToastOpen(false);
+    setIsDraftToastClosing(false);
+    resetDraftToastPosition();
+
+    draftToastOpenRafRef.current = requestAnimationFrame(() => {
+      draftToastOpenRafRef.current = requestAnimationFrame(() => {
+        setIsDraftToastOpen(true);
+        draftToastOpenRafRef.current = null;
+      });
+    });
+
+    return () => {
+      clearDraftToastOpenRaf();
+    };
+
+    /// eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftToast]);
 
   const refreshData = async () => {
     setIsLoadingData(true);
@@ -467,7 +528,7 @@ export default function HomePage() {
       });
     } catch (error) {
       console.error("Load Supabase data error:", error);
-      setPageError(error.message || "Không thể tải dữ liệu từ Supabase.");
+      setPageError(error.message || "Không thể tải dữ liệu từ Clound.");
     } finally {
       setIsLoadingData(false);
     }
@@ -480,11 +541,36 @@ export default function HomePage() {
   }, [location.key]);
 
   useEffect(() => {
+    clearDraftToastTimer();
+
+    if (
+      !draftToast ||
+      !isDraftToastOpen ||
+      isDraftToastDragging ||
+      isDraftToastClosing
+    ) {
+      return;
+    }
+
+    draftToastTimerRef.current = setTimeout(() => {
+      closeDraftToast();
+    }, 4200);
+
+    return () => {
+      clearDraftToastTimer();
+    };
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftToast, isDraftToastOpen, isDraftToastDragging, isDraftToastClosing]);
+
+  useEffect(() => {
     return () => {
       clearDraftToastTimer();
       clearDraftToastExitTimer();
+      clearDraftToastRaf();
+      clearDraftToastOpenRaf();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    /// eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const activeAddRoomBlock = useMemo(() => {
@@ -847,20 +933,17 @@ export default function HomePage() {
 
       {draftToast && (
         <div
+          ref={draftToastRef}
           className={`draft-toast swipe-toast no-print ${
-            isDraftToastDragging ? "is-dragging" : ""
-          } ${isDraftToastClosing ? "is-closing" : ""}`}
+            isDraftToastOpen ? "is-open" : ""
+          } ${isDraftToastDragging ? "is-dragging" : ""} ${
+            isDraftToastClosing ? "is-closing" : ""
+          }`}
           style={{
             "--toast-drag-y": `${draftToastDragY}px`,
           }}
           role="status"
-          title="Giữ để đọc, kéo lên để đóng"
-          onMouseEnter={clearDraftToastTimer}
-          onMouseLeave={() => {
-            if (!isDraftToastDragging && !isDraftToastClosing) {
-              scheduleDraftToastClose(2600);
-            }
-          }}
+          title="Giữ chuột/tay để đọc, kéo lên để đóng"
           onPointerDown={handleDraftToastPointerDown}
           onPointerMove={handleDraftToastPointerMove}
           onPointerUp={handleDraftToastPointerEnd}

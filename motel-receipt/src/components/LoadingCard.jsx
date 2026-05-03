@@ -2,7 +2,7 @@ import "../styles/loading.css";
 
 export default function LoadingCard({
   title = "Đang tải dữ liệu",
-  message = "Đang đồng bộ dữ liệu từ Supabase...",
+  message = "Đang đồng bộ dữ liệu từ Cloud...",
 }) {
   return (
     <div className="loading-card">

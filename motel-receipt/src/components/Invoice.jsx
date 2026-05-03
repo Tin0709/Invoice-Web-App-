@@ -6,6 +6,10 @@ import {
   loadData,
   saveData,
 } from "../utils/storage";
+import {
+  loadDataFromSupabase,
+  upsertInvoiceOnServer,
+} from "../utils/supabaseStorage";
 
 /* =========================
    Helpers
@@ -645,12 +649,14 @@ export default function Invoice({
       waterUnit: "12.000",
     }));
   };
+
   const payFull = () => {
     setF((s) => ({
       ...s,
       paid: fmtVND(calc.total),
     }));
   };
+
   const doPrint = () => {
     window.print();
   };
@@ -680,69 +686,53 @@ export default function Invoice({
       updatedAt: Date.now(),
     };
 
-    const latestData = loadData();
-
-    const nextData = {
-      ...latestData,
-      blocks: latestData.blocks.map((block) => {
-        if (block.id !== blockId) return block;
-
-        return {
-          ...block,
-          rooms: block.rooms.map((room) => {
-            if (room.id !== roomId) return room;
-
-            const invoices = Array.isArray(room.invoices)
-              ? [...room.invoices]
-              : [];
-
-            const existingIndex = invoices.findIndex(
-              (invoice) =>
-                Number(invoice.year) === Number(year) &&
-                Number(invoice.month) === Number(month)
-            );
-
-            if (existingIndex >= 0) {
-              invoices[existingIndex] = {
-                ...invoices[existingIndex],
-                ...invoicePayload,
-              };
-            } else {
-              invoices.push(invoicePayload);
-            }
-
-            return {
-              ...room,
-              roomName: meta.room,
-              tenantName: meta.tenant,
-              defaultRent: parseMoney(f.rentAmount),
-              defaultTrash: parseMoney(f.trashUnit),
-              invoices,
-            };
-          }),
-        };
-      }),
+    const roomUpdates = {
+      roomName: meta.room,
+      tenantName: meta.tenant,
+      defaultRent: parseMoney(f.rentAmount),
+      defaultTrash: parseMoney(f.trashUnit),
     };
 
-    saveData(nextData);
+    try {
+      setSaveMessage("Đang lưu phiếu...");
 
-    const snapshotAfterSave = JSON.stringify({
-      meta,
-      f,
-      year,
-      month,
-      roomId,
-      blockId,
-    });
+      await upsertInvoiceOnServer({
+        blockId,
+        roomId,
+        invoicePayload,
+        roomUpdates,
+      });
 
-    setLastSavedSnapshot(snapshotAfterSave);
-    setSaveMessage("Đã lưu phiếu thành công.");
+      const refreshedData = await loadDataFromSupabase();
+      saveData(refreshedData);
 
-    setTimeout(() => {
-      setSaveMessage("");
-    }, 1800);
+      const snapshotAfterSave = JSON.stringify({
+        meta,
+        f,
+        year,
+        month,
+        roomId,
+        blockId,
+      });
 
-    return true;
+      setLastSavedSnapshot(snapshotAfterSave);
+      setSaveMessage("Đã lưu phiếu thành công.");
+
+      setTimeout(() => {
+        setSaveMessage("");
+      }, 1800);
+
+      return true;
+    } catch (error) {
+      console.error("Save invoice error:", error);
+      setSaveMessage(error.message || "Không thể lưu phiếu.");
+
+      setTimeout(() => {
+        setSaveMessage("");
+      }, 2400);
+
+      return false;
+    }
   }, [blockId, roomId, year, month, meta, f, calc]);
 
   useEffect(() => {
@@ -755,7 +745,9 @@ export default function Invoice({
     <>
       {saveMessage && (
         <div className="save-toast no-print" role="status">
-          ✅ Đã lưu phiếu thành công.
+          {saveMessage === "Đã lưu phiếu thành công."
+            ? "✅ Đã lưu phiếu thành công."
+            : saveMessage}
         </div>
       )}
 
@@ -913,6 +905,7 @@ export default function Invoice({
               </div>
             </div>
           </div>
+
           <footer className="invoice-footer no-print">
             <div>Dữ liệu chỉ vào lịch sử sau khi bấm Lưu.</div>
             <div>

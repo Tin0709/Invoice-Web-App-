@@ -18,6 +18,49 @@ const DEFAULT_FILTERS = {
   status: "all",
 };
 
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        d="M9 4H15L15.8 5.5H20"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M4 5.5H20"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M6.5 8H17.5L16.8 19C16.7 20.1 15.8 21 14.7 21H9.3C8.2 21 7.3 20.1 7.2 19L6.5 8Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M10 11V17"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M14 11V17"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 function normalizeText(value) {
   return String(value ?? "")
     .toLowerCase()
@@ -42,9 +85,11 @@ function getDebtValue(item) {
 function groupInvoicesByMonth(invoices) {
   const sortedInvoices = [...invoices].sort((a, b) => {
     const yearDiff = Number(b.year) - Number(a.year);
+
     if (yearDiff !== 0) return yearDiff;
 
     const monthDiff = Number(b.month) - Number(a.month);
+
     if (monthDiff !== 0) return monthDiff;
 
     return String(a.roomName || "").localeCompare(
@@ -329,6 +374,7 @@ export default function HistoryPage() {
                         onChange={(e) => updateFilter("month", e.target.value)}
                       >
                         <option value="all">Tất cả</option>
+
                         {Array.from(
                           { length: 12 },
                           (_, index) => index + 1
@@ -348,6 +394,7 @@ export default function HistoryPage() {
                         onChange={(e) => updateFilter("year", e.target.value)}
                       >
                         <option value="all">Tất cả</option>
+
                         {yearOptions.map((year) => (
                           <option key={year} value={year}>
                             {year}
@@ -366,6 +413,7 @@ export default function HistoryPage() {
                         }
                       >
                         <option value="all">Tất cả</option>
+
                         {blockOptions.map((block) => (
                           <option key={block.id} value={block.id}>
                             {block.name}
@@ -415,7 +463,7 @@ export default function HistoryPage() {
 
                         <button
                           type="button"
-                          className="danger-btn"
+                          className="danger-btn history-delete-month-btn"
                           onClick={() => handleDeleteMonth(group)}
                         >
                           Xoá tháng này
@@ -427,15 +475,25 @@ export default function HistoryPage() {
                           const debt = getDebtValue(item);
 
                           return (
-                            <div
-                              className="timeline-item"
+                            <article
+                              className="timeline-item history-entry-card"
                               key={`${group.key}-${item.roomId}-${index}`}
                             >
+                              <button
+                                type="button"
+                                className="history-entry-delete-btn"
+                                onClick={() => handleDeleteOne(item)}
+                                aria-label={`Xoá lịch sử ${item.roomName}`}
+                                title="Xoá phiếu"
+                              >
+                                <TrashIcon />
+                              </button>
+
                               <Link
-                                className="timeline-main"
+                                className="timeline-main history-entry-link"
                                 to={`/invoice/${item.blockId}/${item.roomId}?year=${item.year}&month=${item.month}`}
                               >
-                                <div className="timeline-left">
+                                <div className="timeline-left history-entry-main">
                                   <strong>{item.roomName}</strong>
 
                                   <span>
@@ -443,7 +501,7 @@ export default function HistoryPage() {
                                   </span>
                                 </div>
 
-                                <div className="timeline-right">
+                                <div className="timeline-right history-entry-right">
                                   <span
                                     className={
                                       debt > 0
@@ -455,15 +513,7 @@ export default function HistoryPage() {
                                   </span>
                                 </div>
                               </Link>
-
-                              <button
-                                type="button"
-                                className="danger-btn small-btn"
-                                onClick={() => handleDeleteOne(item)}
-                              >
-                                Xoá
-                              </button>
-                            </div>
+                            </article>
                           );
                         })}
                       </div>

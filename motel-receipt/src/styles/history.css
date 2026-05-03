@@ -1,12 +1,8 @@
-/* =========================
-   HISTORY PAGE
-========================= */
-
 .history-page {
   min-height: 100vh;
-  box-sizing: border-box;
   background: #f5f7fb;
   padding: 24px;
+  box-sizing: border-box;
 }
 
 .history-shell {
@@ -21,45 +17,61 @@
 .history-back {
   display: inline-block;
   margin-bottom: 8px;
-  color: #5b21b6;
-  font-weight: 700;
   text-decoration: none;
+  color: #5b21b6;
+  font-weight: 800;
 }
 
 .history-topbar h1 {
   margin: 0 0 8px;
-  color: #1f2937;
   font-size: 38px;
+  line-height: 1.1;
+  color: #111827;
 }
 
 .history-topbar p {
   margin: 0;
   color: #6b7280;
   font-size: 16px;
+  line-height: 1.6;
+}
+
+.history-empty-card {
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 28px;
+  border: 1px solid #e5e7eb;
+}
+
+.history-empty-card h3 {
+  margin: 0 0 8px;
+  font-size: 28px;
+  color: #111827;
+}
+
+.history-empty-card p {
+  margin: 0;
+  color: #6b7280;
+  line-height: 1.6;
 }
 
 /* =========================
    FILTERS
 ========================= */
 
-.history-filter-card,
-.history-empty-card,
-.timeline-group {
-  border: 1px solid #e5e7eb;
-  background: #ffffff;
-}
-
 .history-filter-card {
-  box-sizing: border-box;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
   border-radius: 24px;
   padding: 20px;
   margin-bottom: 22px;
+  box-sizing: border-box;
 }
 
 .history-filter-head {
   display: flex;
-  align-items: flex-start;
   justify-content: space-between;
+  align-items: flex-start;
   gap: 16px;
   margin-bottom: 16px;
 }
@@ -78,24 +90,26 @@
 
 .history-clear-filter-btn {
   border: none;
-  border-radius: 14px;
   background: #eef2ff;
   color: #4338ca;
+  border-radius: 14px;
   padding: 12px 16px;
+  font-weight: 800;
   cursor: pointer;
   white-space: nowrap;
-  font-weight: 800;
+  transition: background 0.18s ease, transform 0.18s ease;
 }
 
 .history-clear-filter-btn:hover {
   background: #e0e7ff;
+  transform: translateY(-1px);
 }
 
 .history-filter-grid {
   display: grid;
   grid-template-columns: 1.6fr repeat(4, minmax(130px, 1fr));
-  align-items: end;
   gap: 12px;
+  align-items: end;
 }
 
 .history-filter-field {
@@ -114,14 +128,14 @@
 .history-filter-field select {
   width: 100%;
   min-width: 0;
-  box-sizing: border-box;
   border: 1px solid #e5e7eb;
-  border-radius: 14px;
   background: #ffffff;
   color: #111827;
+  border-radius: 14px;
   padding: 13px 14px;
-  outline: none;
   font-size: 15px;
+  outline: none;
+  box-sizing: border-box;
 }
 
 .history-filter-field input:focus,
@@ -131,27 +145,7 @@
 }
 
 /* =========================
-   EMPTY STATE
-========================= */
-
-.history-empty-card {
-  border-radius: 24px;
-  padding: 28px;
-}
-
-.history-empty-card h3 {
-  margin: 0 0 8px;
-  color: #111827;
-  font-size: 28px;
-}
-
-.history-empty-card p {
-  margin: 0;
-  color: #6b7280;
-}
-
-/* =========================
-   TIMELINE
+   MONTH GROUPS
 ========================= */
 
 .timeline-groups {
@@ -161,121 +155,191 @@
 }
 
 .timeline-group {
+  background: #ffffff;
+  border-radius: 28px;
+  border: 1px solid #e5e7eb;
   overflow: hidden;
-  border-radius: 24px;
 }
 
 .timeline-group-header {
-  border-bottom: 1px solid #eef2f7;
-  background: linear-gradient(180deg, #fbfcff 0%, #f5f7ff 100%);
-  padding: 22px 24px;
   display: flex;
-  align-items: center;
   justify-content: space-between;
   gap: 16px;
+  align-items: center;
+  padding: 24px 24px 20px;
+  border-bottom: 1px solid #eef2f7;
+  background: linear-gradient(180deg, #fbfcff 0%, #f5f7ff 100%);
 }
 
 .timeline-group-header h2 {
   margin: 0 0 6px;
+  font-size: clamp(34px, 5vw, 56px);
+  line-height: 1;
+  letter-spacing: -1px;
   color: #111827;
-  font-size: 34px;
 }
 
 .timeline-group-header span {
   color: #6b7280;
   font-size: 15px;
+  font-weight: 700;
 }
 
 .timeline-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  padding: 18px;
+}
+
+/* =========================
+   ENTRY CARD
+========================= */
+
+.timeline-item.history-entry-card {
+  position: relative;
+  display: block;
+  min-height: 0;
+  border: 1px solid #e5e7eb;
+  background: #fbfdff;
+  border-radius: 22px;
+  padding: 18px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.timeline-item.history-entry-card:hover {
+  transform: translateY(-1px);
+  border-color: #d7deea;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
+}
+
+.timeline-main.history-entry-link {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 16px;
-}
-
-.timeline-item {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.timeline-main {
-  flex: 1;
-  border: 1px solid #e5e7eb;
-  border-radius: 18px;
-  background: #fafafa;
-  color: inherit;
-  padding: 22px 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  align-items: flex-start;
+  justify-content: flex-start;
   gap: 14px;
   text-decoration: none;
+  color: inherit;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
 }
 
-.timeline-left strong {
+.history-entry-main {
+  width: 100%;
+  padding-right: 56px;
+  box-sizing: border-box;
+}
+
+.history-entry-main strong {
   display: block;
-  margin-bottom: 6px;
+  margin: 0 0 8px;
   color: #111827;
-  font-size: 20px;
+  font-size: 22px;
+  line-height: 1.15;
+  font-weight: 900;
 }
 
-.timeline-left span {
+.history-entry-main span {
+  display: block;
   color: #6b7280;
   font-size: 15px;
+  line-height: 1.5;
+  font-weight: 700;
 }
 
-.timeline-right {
-  text-align: right;
+.history-entry-right {
+  width: 100%;
+  padding-right: 56px;
+  box-sizing: border-box;
+}
+
+.timeline-right.history-entry-right {
+  text-align: left;
 }
 
 .history-debt {
-  color: #b91c1c;
+  display: inline-block;
+  color: #b42318;
+  font-weight: 900;
   font-size: 16px;
-  font-weight: 700;
+  line-height: 1.4;
 }
 
 .history-paid {
   color: #15803d;
 }
 
-/* =========================
-   BUTTONS
-========================= */
-
-.danger-btn,
-.ghost-btn {
-  border-radius: 12px;
-  padding: 12px 16px;
+.history-entry-delete-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 14px;
+  background: #fff1f1;
+  color: #c0392b;
   cursor: pointer;
-  white-space: nowrap;
-  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
 }
+
+.history-entry-delete-btn svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+.history-entry-delete-btn:hover {
+  background: #ffe3e3;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(192, 57, 43, 0.12);
+}
+
+.history-entry-delete-btn:active {
+  transform: translateY(0);
+}
+
+/* =========================
+   BUTTONS + MODAL
+========================= */
 
 .danger-btn {
   border: none;
   background: #fee2e2;
   color: #b91c1c;
+  border-radius: 14px;
+  padding: 12px 16px;
   font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.18s ease, transform 0.18s ease;
 }
 
 .danger-btn:hover {
   background: #fecaca;
+  transform: translateY(-1px);
 }
 
-.small-btn {
-  padding: 11px 14px;
+.history-delete-month-btn {
+  align-self: flex-start;
 }
 
 .ghost-btn {
   border: 1px solid #e5e7eb;
   background: #ffffff;
   color: #111827;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-weight: 700;
+  cursor: pointer;
 }
-
-/* =========================
-   CONFIRM MODAL
-========================= */
 
 .confirm-overlay {
   position: fixed;
@@ -290,21 +354,21 @@
 
 .confirm-modal {
   width: min(420px, 100%);
-  border-radius: 18px;
   background: #ffffff;
+  border-radius: 18px;
   padding: 20px;
   box-shadow: 0 20px 60px rgba(15, 23, 42, 0.25);
 }
 
 .confirm-badge {
+  display: inline-flex;
+  padding: 6px 10px;
   border-radius: 999px;
   background: #eef2ff;
   color: #4f46e5;
-  padding: 6px 10px;
-  display: inline-flex;
-  margin-bottom: 10px;
   font-size: 12px;
   font-weight: 800;
+  margin-bottom: 10px;
 }
 
 .confirm-modal h3 {
@@ -321,8 +385,8 @@
 .confirm-actions {
   display: flex;
   justify-content: flex-end;
-  flex-wrap: wrap;
   gap: 10px;
+  flex-wrap: wrap;
   margin-top: 18px;
 }
 
@@ -340,16 +404,8 @@
 ========================= */
 
 @media (max-width: 900px) {
-  .timeline-group-header,
-  .timeline-main,
-  .timeline-item,
   .history-filter-head {
     flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .timeline-right {
-    text-align: left;
   }
 
   .history-clear-filter-btn {
@@ -363,6 +419,19 @@
   .history-search-field {
     grid-column: 1 / -1;
   }
+
+  .timeline-group-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .history-delete-month-btn {
+    width: 100%;
+  }
+
+  .timeline-list {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 560px) {
@@ -374,11 +443,68 @@
     font-size: 30px;
   }
 
+  .history-filter-card {
+    padding: 16px;
+    border-radius: 22px;
+  }
+
   .history-filter-grid {
     grid-template-columns: 1fr;
   }
 
   .history-search-field {
     grid-column: auto;
+  }
+
+  .timeline-group {
+    border-radius: 24px;
+  }
+
+  .timeline-group-header {
+    padding: 20px 18px 16px;
+  }
+
+  .timeline-group-header h2 {
+    font-size: 34px;
+  }
+
+  .timeline-list {
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .timeline-item.history-entry-card {
+    padding: 16px;
+    border-radius: 20px;
+  }
+
+  .history-entry-main,
+  .history-entry-right {
+    padding-right: 50px;
+  }
+
+  .history-entry-main strong {
+    font-size: 20px;
+  }
+
+  .history-entry-main span {
+    font-size: 14px;
+  }
+
+  .history-debt {
+    font-size: 15px;
+  }
+
+  .history-entry-delete-btn {
+    top: 12px;
+    right: 12px;
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
+  }
+
+  .history-entry-delete-btn svg {
+    width: 19px;
+    height: 19px;
   }
 }

@@ -6,6 +6,7 @@ import "../styles/home.css";
 import "../styles/invoice.css";
 import "../styles/loading.css";
 import { getAuthUser } from "../utils/auth";
+import { supabase } from "../utils/supabase";
 import {
   formatCurrency,
   getAllInvoicesFlat,
@@ -51,7 +52,58 @@ function getInvoiceDraftPrefixForCurrentUser() {
   return `${INVOICE_DRAFT_PREFIX}_${getDraftUserKey()}_`;
 }
 
-function loadInvoiceDraftsForCurrentUser() {
+function normalizeServerDraft(row) {
+  return {
+    id: row.id,
+    blockId: row.block_id,
+    roomId: row.room_id,
+    year: row.year,
+    month: row.month,
+    meta: row.meta || {},
+    f: row.fields || {},
+    updatedAt: row.updated_at ? Date.parse(row.updated_at) : 0,
+    source: "supabase",
+  };
+}
+
+async function loadInvoiceDraftsFromServer() {
+  const { data, error } = await supabase
+    .from("invoice_drafts")
+    .select("id, block_id, room_id, year, month, meta, fields, updated_at")
+    .order("updated_at", { ascending: false });
+
+  if (error) {
+    console.error("Load invoice drafts from Supabase error:", error);
+    return [];
+  }
+
+  return (data || []).map(normalizeServerDraft);
+}
+
+async function deleteDraftsForRoomFromServer(blockId, roomId) {
+  const { error } = await supabase
+    .from("invoice_drafts")
+    .delete()
+    .eq("block_id", blockId)
+    .eq("room_id", roomId);
+
+  if (error) {
+    throw error;
+  }
+}
+
+async function deleteDraftsForBlockFromServer(blockId) {
+  const { error } = await supabase
+    .from("invoice_drafts")
+    .delete()
+    .eq("block_id", blockId);
+
+  if (error) {
+    throw error;
+  }
+}
+
+function loadInvoiceDraftsFromLocal() {
   const prefix = getInvoiceDraftPrefixForCurrentUser();
   const drafts = [];
 
@@ -72,18 +124,19 @@ function loadInvoiceDraftsForCurrentUser() {
 
       drafts.push({
         ...draft,
+        updatedAt: Number(draft.updatedAt || 0),
         draftKey: key,
+        source: "local",
       });
     }
   } catch (error) {
-    console.error("Load invoice drafts error:", error);
+    console.error("Load local invoice drafts error:", error);
   }
 
   return drafts;
 }
 
-function buildLatestDraftMap() {
-  const drafts = loadInvoiceDraftsForCurrentUser();
+function buildLatestDraftMap(drafts) {
   const map = {};
 
   drafts.forEach((draft) => {
@@ -101,7 +154,7 @@ function buildLatestDraftMap() {
   return map;
 }
 
-function removeDraftsForRoom(blockId, roomId) {
+function removeLocalDraftsForRoom(blockId, roomId) {
   const prefix = getInvoiceDraftPrefixForCurrentUser();
 
   try {
@@ -121,11 +174,11 @@ function removeDraftsForRoom(blockId, roomId) {
 
     keysToRemove.forEach((key) => localStorage.removeItem(key));
   } catch (error) {
-    console.error("Remove room drafts error:", error);
+    console.error("Remove local room drafts error:", error);
   }
 }
 
-function removeDraftsForBlock(blockId) {
+function removeLocalDraftsForBlock(blockId) {
   const prefix = getInvoiceDraftPrefixForCurrentUser();
 
   try {
@@ -141,8 +194,26 @@ function removeDraftsForBlock(blockId) {
 
     keysToRemove.forEach((key) => localStorage.removeItem(key));
   } catch (error) {
-    console.error("Remove block drafts error:", error);
+    console.error("Remove local block drafts error:", error);
   }
+}
+
+function removeDraftMapForRoom(map, blockId, roomId) {
+  const nextMap = { ...map };
+  delete nextMap[getDraftMapKey(blockId, roomId)];
+  return nextMap;
+}
+
+function removeDraftMapForBlock(map, blockId) {
+  const nextMap = {};
+
+  Object.entries(map).forEach(([key, value]) => {
+    if (String(value.blockId) !== String(blockId)) {
+      nextMap[key] = value;
+    }
+  });
+
+  return nextMap;
 }
 
 function getMoneyFromFields(room, fields) {
@@ -197,6 +268,7 @@ export default function HomePage() {
   const location = useLocation();
 
   const [data, setData] = useState({ blocks: [] });
+  const [draftMap, setDraftMap] = useState({});
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [pageError, setPageError] = useState("");
 
@@ -208,7 +280,6 @@ export default function HomePage() {
   const [openAddRoomBlockId, setOpenAddRoomBlockId] = useState(null);
   const [roomToast, setRoomToast] = useState("");
   const [draftToast, setDraftToast] = useState("");
-  const [draftVersion, setDraftVersion] = useState(0);
 
   const [renameBlockModal, setRenameBlockModal] = useState({
     open: false,
@@ -265,9 +336,20 @@ export default function HomePage() {
     setPageError("");
 
     try {
-      const serverData = await loadDataFromSupabase();
+      const [serverData, serverDrafts] = await Promise.all([
+        loadDataFromSupabase(),
+        loadInvoiceDraftsFromServer(),
+      ]);
+
+      const localDrafts = loadInvoiceDraftsFromLocal();
+      const nextDraftMap = buildLatestDraftMap([
+        ...serverDrafts,
+        ...localDrafts,
+      ]);
 
       setData(serverData);
+      setDraftMap(nextDraftMap);
+
       saveData(serverData);
 
       setExpandedBlockId((currentBlockId) => {
@@ -290,13 +372,8 @@ export default function HomePage() {
   useEffect(() => {
     refreshData();
     showDraftToastFromStorage();
-    setDraftVersion((value) => value + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.key]);
-
-  const draftMap = useMemo(() => {
-    return buildLatestDraftMap();
-  }, [draftVersion, data.blocks]);
 
   const activeAddRoomBlock = useMemo(() => {
     if (!openAddRoomBlockId) return null;
@@ -452,8 +529,12 @@ export default function HomePage() {
       }" không? Toàn bộ phòng và dữ liệu phiếu trong dãy này sẽ bị xoá.`,
       onConfirm: async () => {
         await deleteBlockOnServer(blockId);
-        removeDraftsForBlock(blockId);
-        setDraftVersion((value) => value + 1);
+        await deleteDraftsForBlockFromServer(blockId);
+        removeLocalDraftsForBlock(blockId);
+
+        setDraftMap((currentMap) =>
+          removeDraftMapForBlock(currentMap, blockId)
+        );
 
         setData((prev) => {
           const nextBlocks = prev.blocks.filter(
@@ -587,8 +668,12 @@ export default function HomePage() {
       }" không? Dữ liệu phiếu của phòng này cũng sẽ bị xoá.`,
       onConfirm: async () => {
         await deleteRoomOnServer(roomId);
-        removeDraftsForRoom(blockId, roomId);
-        setDraftVersion((value) => value + 1);
+        await deleteDraftsForRoomFromServer(blockId, roomId);
+        removeLocalDraftsForRoom(blockId, roomId);
+
+        setDraftMap((currentMap) =>
+          removeDraftMapForRoom(currentMap, blockId, roomId)
+        );
 
         setData((prev) => {
           const nextData = {
@@ -698,7 +783,7 @@ export default function HomePage() {
           {isLoadingData ? (
             <LoadingCard
               title="Đang tải phòng trọ"
-              message="Đang lấy dữ liệu dãy, phòng và phiếu gần đây từ Supabase..."
+              message="Đang lấy dữ liệu dãy, phòng, phiếu và bản nháp từ Supabase..."
             />
           ) : (
             <div className="content-fade-in">

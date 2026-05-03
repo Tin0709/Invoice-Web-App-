@@ -2,6 +2,7 @@ import { createPortal } from "react-dom";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "../styles/invoice.css";
 import { getAuthUser } from "../utils/auth";
+import { supabase } from "../utils/supabase";
 import {
   getInvoiceByPeriod,
   getPreviousInvoice,
@@ -161,7 +162,103 @@ function getInvoiceDraftKey({ blockId, roomId, year, month }) {
   ].join("_");
 }
 
-function loadInvoiceDraft({ blockId, roomId, year, month }) {
+function normalizeServerDraft(row) {
+  if (!row) return null;
+
+  return {
+    blockId: row.block_id,
+    roomId: row.room_id,
+    year: row.year,
+    month: row.month,
+    meta: row.meta || {},
+    f: row.fields || {},
+    updatedAt: row.updated_at ? Date.parse(row.updated_at) : 0,
+    source: "supabase",
+  };
+}
+
+async function loadInvoiceDraftFromServer({ roomId, year, month }) {
+  if (!roomId || !year || !month) return null;
+
+  const { data, error } = await supabase
+    .from("invoice_drafts")
+    .select("id, block_id, room_id, year, month, meta, fields, updated_at")
+    .eq("room_id", roomId)
+    .eq("year", Number(year))
+    .eq("month", Number(month))
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return normalizeServerDraft(data);
+}
+
+async function saveInvoiceDraftToServer({
+  blockId,
+  roomId,
+  year,
+  month,
+  meta,
+  f,
+}) {
+  if (!blockId || !roomId || !year || !month) return null;
+
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+
+  if (userError) {
+    throw userError;
+  }
+
+  const user = userData?.user;
+
+  if (!user?.id) {
+    throw new Error("Không tìm thấy tài khoản đang đăng nhập.");
+  }
+
+  const payload = {
+    user_id: user.id,
+    block_id: blockId,
+    room_id: roomId,
+    year: Number(year),
+    month: Number(month),
+    meta,
+    fields: f,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data, error } = await supabase
+    .from("invoice_drafts")
+    .upsert(payload, {
+      onConflict: "user_id,room_id,year,month",
+    })
+    .select("id, block_id, room_id, year, month, meta, fields, updated_at")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return normalizeServerDraft(data);
+}
+
+async function deleteInvoiceDraftFromServer({ roomId, year, month }) {
+  if (!roomId || !year || !month) return;
+
+  const { error } = await supabase
+    .from("invoice_drafts")
+    .delete()
+    .eq("room_id", roomId)
+    .eq("year", Number(year))
+    .eq("month", Number(month));
+
+  if (error) {
+    throw error;
+  }
+}
+
+function loadInvoiceDraftFromLocal({ blockId, roomId, year, month }) {
   try {
     if (!blockId || !roomId || !year || !month) return null;
 
@@ -176,14 +273,24 @@ function loadInvoiceDraft({ blockId, roomId, year, month }) {
 
     return {
       ...draft,
+      updatedAt: Number(draft.updatedAt || 0),
       draftKey,
+      source: "local",
     };
   } catch {
     return null;
   }
 }
 
-function saveInvoiceDraft({ blockId, roomId, year, month, meta, f, roomName }) {
+function saveInvoiceDraftToLocal({
+  blockId,
+  roomId,
+  year,
+  month,
+  meta,
+  f,
+  roomName,
+}) {
   try {
     if (!blockId || !roomId || !year || !month) return null;
 
@@ -220,7 +327,7 @@ function saveInvoiceDraft({ blockId, roomId, year, month, meta, f, roomName }) {
   }
 }
 
-function clearInvoiceDraft({ blockId, roomId, year, month }) {
+function clearInvoiceDraftFromLocal({ blockId, roomId, year, month }) {
   try {
     if (!blockId || !roomId || !year || !month) return null;
 
@@ -329,7 +436,7 @@ const createInitialInvoiceState = ({
         paid: "",
       };
 
-  const draft = loadInvoiceDraft({
+  const localDraft = loadInvoiceDraftFromLocal({
     blockId,
     roomId,
     year,
@@ -337,14 +444,14 @@ const createInitialInvoiceState = ({
   });
 
   return {
-    meta: draft?.meta || meta,
-    f: draft?.f || f,
+    meta: localDraft?.meta || meta,
+    f: localDraft?.f || f,
 
     baseMeta: meta,
     baseF: f,
 
-    draftRestored: Boolean(draft),
-    draftUpdatedAt: draft?.updatedAt || null,
+    draftRestored: Boolean(localDraft),
+    draftUpdatedAt: localDraft?.updatedAt || null,
   };
 };
 
@@ -558,6 +665,9 @@ export default function Invoice({
   const [saveMessage, setSaveMessage] = useState("");
 
   const draftRestoreToastShownRef = useRef(false);
+  const serverDraftPeriodRef = useRef("");
+  const serverSaveTimerRef = useRef(null);
+  const latestDraftPayloadRef = useRef(null);
 
   const {
     y: year,
@@ -641,9 +751,63 @@ export default function Invoice({
   }, [isDirty, onDirtyChange]);
 
   useEffect(() => {
+    const periodKey = `${blockId || ""}_${roomId || ""}_${year || ""}_${
+      month || ""
+    }`;
+
+    if (!blockId || !roomId || !year || !month) return;
+    if (serverDraftPeriodRef.current === periodKey) return;
+
+    serverDraftPeriodRef.current = periodKey;
+
+    let cancelled = false;
+
+    const loadServerDraft = async () => {
+      try {
+        const serverDraft = await loadInvoiceDraftFromServer({
+          roomId,
+          year,
+          month,
+        });
+
+        if (cancelled || !serverDraft) return;
+
+        const localDraftTime = Number(initialState.draftUpdatedAt || 0);
+        const serverDraftTime = Number(serverDraft.updatedAt || 0);
+
+        if (serverDraftTime < localDraftTime) return;
+
+        setMeta(serverDraft.meta);
+        setF(serverDraft.f);
+
+        const nextDateParts = splitISO(serverDraft.meta?.date || meta.date);
+
+        setMonthText(nextDateParts.m || month);
+        setYearText(nextDateParts.y || year);
+        setRoomText(serverDraft.meta?.room || meta.room || "");
+
+        setSaveMessage("📝 Đã khôi phục bản nháp chưa lưu.");
+
+        setTimeout(() => {
+          setSaveMessage("");
+        }, 2200);
+      } catch (error) {
+        console.error("Load invoice draft from Supabase error:", error);
+      }
+    };
+
+    loadServerDraft();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blockId, roomId, year, month]);
+
+  useEffect(() => {
     if (!isDirty || !blockId || !roomId || !year || !month) return;
 
-    saveInvoiceDraft({
+    saveInvoiceDraftToLocal({
       blockId,
       roomId,
       year,
@@ -652,7 +816,46 @@ export default function Invoice({
       f,
       roomName: meta.room || roomText,
     });
+
+    const draftPayload = {
+      blockId,
+      roomId,
+      year,
+      month,
+      meta,
+      f,
+    };
+
+    latestDraftPayloadRef.current = draftPayload;
+
+    if (serverSaveTimerRef.current) {
+      clearTimeout(serverSaveTimerRef.current);
+    }
+
+    serverSaveTimerRef.current = setTimeout(async () => {
+      try {
+        await saveInvoiceDraftToServer(draftPayload);
+      } catch (error) {
+        console.error("Save invoice draft to Supabase error:", error);
+      }
+    }, 650);
   }, [isDirty, blockId, roomId, year, month, meta, f, roomText]);
+
+  useEffect(() => {
+    return () => {
+      if (serverSaveTimerRef.current) {
+        clearTimeout(serverSaveTimerRef.current);
+      }
+
+      if (latestDraftPayloadRef.current) {
+        saveInvoiceDraftToServer(latestDraftPayloadRef.current).catch(
+          (error) => {
+            console.error("Final save invoice draft error:", error);
+          }
+        );
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!initialState.draftRestored) return;
@@ -862,7 +1065,13 @@ export default function Invoice({
       const refreshedData = await loadDataFromSupabase();
       saveData(refreshedData);
 
-      const clearedDraftKey = clearInvoiceDraft({
+      await deleteInvoiceDraftFromServer({
+        roomId,
+        year,
+        month,
+      });
+
+      const clearedDraftKey = clearInvoiceDraftFromLocal({
         blockId,
         roomId,
         year,
@@ -870,6 +1079,7 @@ export default function Invoice({
       });
 
       clearDraftNotice(clearedDraftKey);
+      latestDraftPayloadRef.current = null;
 
       const snapshotAfterSave = JSON.stringify({
         meta,

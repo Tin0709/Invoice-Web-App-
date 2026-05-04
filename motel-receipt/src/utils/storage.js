@@ -14,22 +14,7 @@ export function createId() {
 
 function createDefaultData() {
   return {
-    blocks: [
-      {
-        id: createId(),
-        name: "Dãy A",
-        rooms: [
-          {
-            id: createId(),
-            roomName: "Phòng 1",
-            tenantName: "Người thuê mẫu",
-            defaultRent: 2500000,
-            defaultTrash: 15000,
-            invoices: [],
-          },
-        ],
-      },
-    ],
+    blocks: [],
   };
 }
 

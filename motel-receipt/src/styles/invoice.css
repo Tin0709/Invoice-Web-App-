@@ -168,7 +168,7 @@
 
 .metaGrid {
   display: grid;
-  grid-template-columns: 92px minmax(0, 1fr);
+  grid-template-columns: 128px minmax(0, 1fr);
   gap: 12px 14px;
   align-items: center;
 }
@@ -744,7 +744,7 @@
 
 @media (min-width: 760px) {
   .metaGrid {
-    grid-template-columns: 92px minmax(0, 1fr) 82px minmax(0, 1fr);
+    grid-template-columns: 128px minmax(0, 1fr) 96px minmax(0, 1fr);
     gap: 14px 18px;
   }
 

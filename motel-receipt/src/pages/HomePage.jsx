@@ -331,9 +331,7 @@ function renderConfirmMessage(message) {
   return parts.map((part, index) => {
     const isQuoted = part.startsWith('"') && part.endsWith('"');
 
-    if (!isQuoted) {
-      return part;
-    }
+    if (!isQuoted) return part;
 
     return <strong key={`${part}-${index}`}>{part.slice(1, -1)}</strong>;
   });
@@ -353,6 +351,7 @@ export default function HomePage() {
   const [search, setSearch] = useState("");
   const [roomInputs, setRoomInputs] = useState({});
   const [openAddRoomBlockId, setOpenAddRoomBlockId] = useState(null);
+  const [isAddRoomSaving, setIsAddRoomSaving] = useState(false);
   const [roomToast, setRoomToast] = useState("");
   const [draftToast, setDraftToast] = useState("");
 
@@ -390,6 +389,7 @@ export default function HomePage() {
     value: "",
     roomName: "",
   });
+
   const [isRoomManageSaving, setIsRoomManageSaving] = useState(false);
 
   const [confirmState, setConfirmState] = useState({
@@ -399,6 +399,7 @@ export default function HomePage() {
     message: "",
     onConfirm: null,
   });
+
   const [isConfirmLoading, setIsConfirmLoading] = useState(false);
 
   const showRoomToast = (message) => {
@@ -584,7 +585,7 @@ export default function HomePage() {
       clearDraftToastOpenRaf();
     };
 
-    /// eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftToast]);
 
   const refreshData = async () => {
@@ -605,7 +606,6 @@ export default function HomePage() {
 
       setData(serverData);
       setDraftMap(nextDraftMap);
-
       saveData(serverData);
 
       setExpandedBlockId((currentBlockId) => {
@@ -670,7 +670,7 @@ export default function HomePage() {
       clearDraftToastRaf();
       clearDraftToastOpenRaf();
     };
-    /// eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const activeAddRoomBlock = useMemo(() => {
@@ -726,7 +726,8 @@ export default function HomePage() {
     }
   };
 
-  const closeAddRoomModal = () => {
+  const closeAddRoomModal = (options = {}) => {
+    if (isAddRoomSaving && !options.force) return;
     setOpenAddRoomBlockId(null);
   };
 
@@ -847,7 +848,6 @@ export default function HomePage() {
 
     rememberActiveBlock(blockId);
     setExpandedBlockId(blockId);
-
     handleDeleteRoom(blockId, roomId);
   };
 
@@ -999,6 +999,8 @@ export default function HomePage() {
   };
 
   const handleAddRoom = async (blockId) => {
+    if (isAddRoomSaving) return;
+
     const values = roomInputs[blockId] || {};
     const roomName = (values.roomName || "").trim();
     const tenantName = (values.tenantName || "").trim();
@@ -1009,13 +1011,18 @@ export default function HomePage() {
       return;
     }
 
+    setIsAddRoomSaving(true);
+
     try {
-      const newRoom = await createRoomOnServer(blockId, {
-        roomName,
-        tenantName,
-        defaultRent,
-        defaultTrash: 15000,
-      });
+      const [newRoom] = await Promise.all([
+        createRoomOnServer(blockId, {
+          roomName,
+          tenantName,
+          defaultRent,
+          defaultTrash: 15000,
+        }),
+        new Promise((resolve) => setTimeout(resolve, 450)),
+      ]);
 
       setData((prev) => {
         const nextData = {
@@ -1040,18 +1047,20 @@ export default function HomePage() {
         },
       }));
 
-      setOpenAddRoomBlockId(null);
+      closeAddRoomModal({ force: true });
       showRoomToast("✅ Đã thêm phòng mới thành công.");
     } catch (error) {
       console.error(error);
       showRoomToast(error.message || "Không thể thêm phòng mới.");
+    } finally {
+      setIsAddRoomSaving(false);
     }
   };
 
   const handleAddRoomSubmit = (event) => {
     event.preventDefault();
 
-    if (!openAddRoomBlockId) return;
+    if (!openAddRoomBlockId || isAddRoomSaving) return;
 
     handleAddRoom(openAddRoomBlockId);
   };
@@ -1183,7 +1192,7 @@ export default function HomePage() {
                 type="text"
                 placeholder="Nhập tên dãy..."
                 value={newBlockName}
-                onChange={(e) => setNewBlockName(e.target.value)}
+                onChange={(event) => setNewBlockName(event.target.value)}
               />
 
               <button type="button" onClick={handleAddBlock}>
@@ -1196,7 +1205,7 @@ export default function HomePage() {
                 type="text"
                 placeholder="Tìm theo phòng hoặc người thuê..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(event) => setSearch(event.target.value)}
               />
             </div>
           </section>
@@ -1266,6 +1275,7 @@ export default function HomePage() {
                                   draftMap[getDraftMapKey(block.id, room.id)];
 
                                 const latestInvoice = getLatestInvoice(room);
+
                                 const roomMoney = getRoomCardMoney(
                                   room,
                                   latestInvoice,
@@ -1274,6 +1284,7 @@ export default function HomePage() {
 
                                 const sourceYear =
                                   draft?.year || latestInvoice?.year;
+
                                 const sourceMonth =
                                   draft?.month || latestInvoice?.month;
 
@@ -1284,6 +1295,7 @@ export default function HomePage() {
 
                                 const displayRoomName =
                                   draft?.meta?.room || room.roomName;
+
                                 const displayTenantName =
                                   draft?.meta?.tenant || room.tenantName;
 
@@ -1503,9 +1515,9 @@ export default function HomePage() {
       {activeAddRoomBlock && (
         <div className="add-room-modal-overlay" onClick={closeAddRoomModal}>
           <form
-            className="add-room-modal"
+            className={`add-room-modal ${isAddRoomSaving ? "is-saving" : ""}`}
             onSubmit={handleAddRoomSubmit}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
           >
             <div className="add-room-modal-header">
               <div>
@@ -1520,6 +1532,8 @@ export default function HomePage() {
                 type="button"
                 className="add-room-modal-x"
                 onClick={closeAddRoomModal}
+                disabled={isAddRoomSaving}
+                aria-label="Đóng"
               >
                 ×
               </button>
@@ -1530,27 +1544,29 @@ export default function HomePage() {
                 type="text"
                 placeholder="Tên phòng"
                 value={activeInputs.roomName || ""}
-                onChange={(e) =>
+                onChange={(event) =>
                   handleRoomInputChange(
                     openAddRoomBlockId,
                     "roomName",
-                    e.target.value
+                    event.target.value
                   )
                 }
                 autoFocus
+                disabled={isAddRoomSaving}
               />
 
               <input
                 type="text"
                 placeholder="Tên người thuê"
                 value={activeInputs.tenantName || ""}
-                onChange={(e) =>
+                onChange={(event) =>
                   handleRoomInputChange(
                     openAddRoomBlockId,
                     "tenantName",
-                    e.target.value
+                    event.target.value
                   )
                 }
+                disabled={isAddRoomSaving}
               />
 
               <input
@@ -1558,25 +1574,40 @@ export default function HomePage() {
                 inputMode="numeric"
                 placeholder="Tiền phòng mặc định"
                 value={activeInputs.defaultRent || ""}
-                onChange={(e) =>
+                onChange={(event) =>
                   handleRoomInputChange(
                     openAddRoomBlockId,
                     "defaultRent",
-                    e.target.value
+                    event.target.value
                   )
                 }
+                disabled={isAddRoomSaving}
               />
             </div>
 
             <div className="add-room-modal-actions">
-              <button type="submit" className="add-room-modal-primary">
-                + Thêm phòng
+              <button
+                type="submit"
+                className={`add-room-modal-primary ${
+                  isAddRoomSaving ? "is-loading" : ""
+                }`}
+                disabled={isAddRoomSaving}
+              >
+                {isAddRoomSaving ? (
+                  <>
+                    <span className="add-room-spinner" aria-hidden="true" />
+                    Đang thêm...
+                  </>
+                ) : (
+                  "+ Thêm phòng"
+                )}
               </button>
 
               <button
                 type="button"
                 className="add-room-modal-secondary"
                 onClick={closeAddRoomModal}
+                disabled={isAddRoomSaving}
               >
                 Đóng
               </button>
@@ -1590,7 +1621,7 @@ export default function HomePage() {
           <form
             className="add-room-modal"
             onSubmit={handleRenameBlockSubmit}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
           >
             <div className="add-room-modal-header">
               <div>
@@ -1613,10 +1644,10 @@ export default function HomePage() {
                 type="text"
                 placeholder="Tên dãy mới"
                 value={renameBlockModal.value}
-                onChange={(e) =>
+                onChange={(event) =>
                   setRenameBlockModal((prev) => ({
                     ...prev,
-                    value: e.target.value,
+                    value: event.target.value,
                   }))
                 }
                 autoFocus
@@ -1647,7 +1678,7 @@ export default function HomePage() {
               isRoomManageSaving ? "is-saving" : ""
             }`}
             onSubmit={handleRoomManageSubmit}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
           >
             <button
               type="button"
@@ -1704,10 +1735,10 @@ export default function HomePage() {
                 type="text"
                 placeholder="Nhập tên phòng mới"
                 value={roomManageModal.value}
-                onChange={(e) =>
+                onChange={(event) =>
                   setRoomManageModal((prev) => ({
                     ...prev,
-                    value: e.target.value,
+                    value: event.target.value,
                   }))
                 }
                 autoFocus
@@ -1754,7 +1785,7 @@ export default function HomePage() {
         <div className="add-room-modal-overlay" onClick={closeBlockMenuModal}>
           <div
             className="block-menu-modal"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
           >
             <div className="block-menu-modal-header">
               <div>
@@ -1834,7 +1865,10 @@ export default function HomePage() {
 
       {confirmState.open && (
         <div className="confirm-overlay" onClick={closeConfirm}>
-          <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="confirm-modal"
+            onClick={(event) => event.stopPropagation()}
+          >
             <h3>{confirmState.title}</h3>
             <p>{renderConfirmMessage(confirmState.message)}</p>
 

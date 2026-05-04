@@ -2957,3 +2957,43 @@
     transition: none !important;
   }
 }
+.add-room-modal-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.add-room-modal-primary.is-loading {
+  cursor: wait;
+  opacity: 0.96;
+  background: linear-gradient(180deg, #6d63ff 0%, #4f46e5 100%);
+  box-shadow: 0 16px 34px rgba(79, 70, 229, 0.3);
+}
+
+.add-room-modal-primary:disabled,
+.add-room-modal-secondary:disabled,
+.add-room-modal-x:disabled {
+  cursor: not-allowed;
+}
+
+.add-room-modal.is-saving .add-room-modal-fields input {
+  background: #f9fafb;
+  color: #6b7280;
+  opacity: 1;
+}
+
+.add-room-modal.is-saving .add-room-modal-secondary,
+.add-room-modal.is-saving .add-room-modal-x {
+  opacity: 0.55;
+}
+
+.add-room-spinner {
+  width: 19px;
+  height: 19px;
+  border: 3px solid rgba(255, 255, 255, 0.45);
+  border-top-color: #ffffff;
+  border-radius: 999px;
+  display: inline-block;
+  animation: confirmSpin 0.75s linear infinite;
+}

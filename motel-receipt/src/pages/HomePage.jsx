@@ -585,7 +585,7 @@ export default function HomePage() {
       clearDraftToastOpenRaf();
     };
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    /// eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftToast]);
 
   const refreshData = async () => {
@@ -670,7 +670,7 @@ export default function HomePage() {
       clearDraftToastRaf();
       clearDraftToastOpenRaf();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    /// eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const activeAddRoomBlock = useMemo(() => {

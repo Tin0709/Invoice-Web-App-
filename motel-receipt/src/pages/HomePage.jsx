@@ -390,6 +390,7 @@ export default function HomePage() {
     value: "",
     roomName: "",
   });
+  const [isRoomManageSaving, setIsRoomManageSaving] = useState(false);
 
   const [confirmState, setConfirmState] = useState({
     open: false,
@@ -773,7 +774,9 @@ export default function HomePage() {
     });
   };
 
-  const closeRoomManageModal = () => {
+  const closeRoomManageModal = (options = {}) => {
+    if (isRoomManageSaving && !options.force) return;
+
     setRoomManageModal({
       open: false,
       blockId: null,
@@ -787,6 +790,8 @@ export default function HomePage() {
   const handleRoomManageSubmit = async (event) => {
     event.preventDefault();
 
+    if (isRoomManageSaving) return;
+
     const newName = roomManageModal.value.trim();
 
     if (!newName) {
@@ -794,8 +799,13 @@ export default function HomePage() {
       return;
     }
 
+    setIsRoomManageSaving(true);
+
     try {
-      await renameRoomOnServer(roomManageModal.roomId, newName);
+      await Promise.all([
+        renameRoomOnServer(roomManageModal.roomId, newName),
+        new Promise((resolve) => setTimeout(resolve, 450)),
+      ]);
 
       setData((prev) => {
         const nextData = {
@@ -820,22 +830,24 @@ export default function HomePage() {
 
       rememberActiveBlock(roomManageModal.blockId);
       setExpandedBlockId(roomManageModal.blockId);
-      closeRoomManageModal();
+      closeRoomManageModal({ force: true });
       showRoomToast("✅ Đã đổi tên phòng.");
     } catch (error) {
       console.error(error);
       showRoomToast(error.message || "Không thể đổi tên phòng.");
+    } finally {
+      setIsRoomManageSaving(false);
     }
   };
 
   const handleRoomManageDelete = () => {
+    if (isRoomManageSaving) return;
+
     const { blockId, roomId } = roomManageModal;
 
     rememberActiveBlock(blockId);
     setExpandedBlockId(blockId);
 
-    // Giữ modal "Tuỳ chọn phòng" ở phía sau confirm.
-    // Khi bấm Huỷ, confirm đóng và người dùng quay lại modal này.
     handleDeleteRoom(blockId, roomId);
   };
 
@@ -1631,7 +1643,9 @@ export default function HomePage() {
       {roomManageModal.open && (
         <div className="add-room-modal-overlay" onClick={closeRoomManageModal}>
           <form
-            className="add-room-modal room-manage-modal-new"
+            className={`add-room-modal room-manage-modal-new ${
+              isRoomManageSaving ? "is-saving" : ""
+            }`}
             onSubmit={handleRoomManageSubmit}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1641,6 +1655,7 @@ export default function HomePage() {
               onClick={handleRoomManageDelete}
               aria-label="Xoá phòng"
               title="Xoá phòng"
+              disabled={isRoomManageSaving}
             >
               <svg
                 viewBox="0 0 24 24"
@@ -1664,6 +1679,7 @@ export default function HomePage() {
               className="add-room-modal-x"
               onClick={closeRoomManageModal}
               aria-label="Đóng"
+              disabled={isRoomManageSaving}
             >
               ×
             </button>
@@ -1695,6 +1711,7 @@ export default function HomePage() {
                   }))
                 }
                 autoFocus
+                disabled={isRoomManageSaving}
               />
 
               <p className="room-manage-help">
@@ -1703,14 +1720,28 @@ export default function HomePage() {
             </div>
 
             <div className="room-manage-actions-new">
-              <button type="submit" className="room-manage-save-btn">
-                Lưu tên mới
+              <button
+                type="submit"
+                className={`room-manage-save-btn ${
+                  isRoomManageSaving ? "is-loading" : ""
+                }`}
+                disabled={isRoomManageSaving}
+              >
+                {isRoomManageSaving ? (
+                  <>
+                    <span className="room-manage-spinner" aria-hidden="true" />
+                    Đang lưu...
+                  </>
+                ) : (
+                  "Lưu tên mới"
+                )}
               </button>
 
               <button
                 type="button"
                 className="room-manage-close-btn"
                 onClick={closeRoomManageModal}
+                disabled={isRoomManageSaving}
               >
                 Đóng
               </button>
@@ -1804,8 +1835,6 @@ export default function HomePage() {
       {confirmState.open && (
         <div className="confirm-overlay" onClick={closeConfirm}>
           <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="confirm-badge">Xác nhận</div>
-
             <h3>{confirmState.title}</h3>
             <p>{renderConfirmMessage(confirmState.message)}</p>
 

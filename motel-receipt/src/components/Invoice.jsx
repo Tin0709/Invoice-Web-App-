@@ -1082,8 +1082,26 @@ export default function Invoice({
     }));
   };
 
+  const cleanFileName = (value) => {
+    return String(value || "")
+      .trim()
+      .replace(/[\\/:*?"<>|]/g, "")
+      .replace(/\s+/g, " ");
+  };
+
   const doPrint = () => {
+    const oldTitle = document.title;
+
+    const roomName = cleanFileName(meta.room || roomText || "Phòng");
+    const tenantName = cleanFileName(meta.tenant || "Người thuê");
+
+    document.title = `Hoá đơn (${roomName} - ${tenantName})`;
+
     window.print();
+
+    setTimeout(() => {
+      document.title = oldTitle;
+    }, 800);
   };
 
   const handleSave = useCallback(async () => {

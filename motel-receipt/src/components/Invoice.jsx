@@ -481,33 +481,45 @@ function MetersBlock({ f, calc, setDigitsField, setMoneyField, applyPrevOld }) {
           <div className="meterFields">
             <div className="mf">
               <div className="mfLabel">Số cũ</div>
-              <input
-                className="cell-input"
-                value={f.elecOld}
-                onChange={setDigitsField("elecOld")}
-                inputMode="numeric"
-                placeholder="Số tháng trước"
-              />
+
+              <div className="unit-input-wrap">
+                <input
+                  className="cell-input unit-input"
+                  value={f.elecOld}
+                  onChange={setDigitsField("elecOld")}
+                  inputMode="numeric"
+                  placeholder="Số tháng trước"
+                />
+                <span className="unit-suffix">kWh</span>
+              </div>
             </div>
 
             <div className="mf">
               <div className="mfLabel">Số mới</div>
-              <input
-                className="cell-input"
-                value={f.elecNew}
-                onChange={setDigitsField("elecNew")}
-                inputMode="numeric"
-                placeholder="0"
-              />
+
+              <div className="unit-input-wrap">
+                <input
+                  className="cell-input unit-input"
+                  value={f.elecNew}
+                  onChange={setDigitsField("elecNew")}
+                  inputMode="numeric"
+                  placeholder="0"
+                />
+                <span className="unit-suffix">kWh</span>
+              </div>
             </div>
 
             <div className="mf">
               <div className="mfLabel">Sử dụng</div>
-              <input
-                className="cell-input"
-                value={fmtVND(calc.elecUsed)}
-                readOnly
-              />
+
+              <div className="unit-input-wrap">
+                <input
+                  className="cell-input unit-input"
+                  value={fmtVND(calc.elecUsed)}
+                  readOnly
+                />
+                <span className="unit-suffix">kWh</span>
+              </div>
             </div>
           </div>
 
@@ -541,33 +553,45 @@ function MetersBlock({ f, calc, setDigitsField, setMoneyField, applyPrevOld }) {
           <div className="meterFields">
             <div className="mf">
               <div className="mfLabel">Số cũ</div>
-              <input
-                className="cell-input"
-                value={f.waterOld}
-                onChange={setDigitsField("waterOld")}
-                inputMode="numeric"
-                placeholder="Số tháng trước"
-              />
+
+              <div className="unit-input-wrap">
+                <input
+                  className="cell-input unit-input"
+                  value={f.waterOld}
+                  onChange={setDigitsField("waterOld")}
+                  inputMode="numeric"
+                  placeholder="Số tháng trước"
+                />
+                <span className="unit-suffix">khối</span>
+              </div>
             </div>
 
             <div className="mf">
               <div className="mfLabel">Số mới</div>
-              <input
-                className="cell-input"
-                value={f.waterNew}
-                onChange={setDigitsField("waterNew")}
-                inputMode="numeric"
-                placeholder="0"
-              />
+
+              <div className="unit-input-wrap">
+                <input
+                  className="cell-input unit-input"
+                  value={f.waterNew}
+                  onChange={setDigitsField("waterNew")}
+                  inputMode="numeric"
+                  placeholder="0"
+                />
+                <span className="unit-suffix">khối</span>
+              </div>
             </div>
 
             <div className="mf">
               <div className="mfLabel">Sử dụng</div>
-              <input
-                className="cell-input"
-                value={fmtVND(calc.waterUsed)}
-                readOnly
-              />
+
+              <div className="unit-input-wrap">
+                <input
+                  className="cell-input unit-input"
+                  value={fmtVND(calc.waterUsed)}
+                  readOnly
+                />
+                <span className="unit-suffix">khối</span>
+              </div>
             </div>
           </div>
 

@@ -1236,3 +1236,28 @@
     display: none !important;
   }
 }
+.unit-input-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.unit-input-wrap .unit-input {
+  padding-right: 58px;
+}
+
+.unit-suffix {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  transform: translateY(-50%);
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+}
+
+.unit-input-wrap .unit-input[readonly] + .unit-suffix {
+  color: #475569;
+}

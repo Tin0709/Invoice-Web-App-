@@ -702,6 +702,17 @@ export default function Invoice({
   const [yearText, setYearText] = useState(year);
   const [roomText, setRoomText] = useState(meta.room);
 
+  useEffect(() => {
+    const roomName = cleanFileName(meta.room || roomText || "Phòng");
+    const tenantName = cleanFileName(meta.tenant || "Người thuê");
+
+    document.title = `Hoá đơn (${roomName} - ${tenantName})`;
+
+    return () => {
+      document.title = "Quản lý phòng trọ";
+    };
+  }, [meta.room, meta.tenant, roomText]);
+
   const [lastSavedSnapshot, setLastSavedSnapshot] = useState(() =>
     JSON.stringify({
       meta: initialState.baseMeta || initialState.meta,
@@ -1090,18 +1101,14 @@ export default function Invoice({
   };
 
   const doPrint = () => {
-    const oldTitle = document.title;
-
     const roomName = cleanFileName(meta.room || roomText || "Phòng");
     const tenantName = cleanFileName(meta.tenant || "Người thuê");
 
     document.title = `Hoá đơn (${roomName} - ${tenantName})`;
 
-    window.print();
-
     setTimeout(() => {
-      document.title = oldTitle;
-    }, 800);
+      window.print();
+    }, 150);
   };
 
   const handleSave = useCallback(async () => {

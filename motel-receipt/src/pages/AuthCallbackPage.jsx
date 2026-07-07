@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { saveAuthUser } from "../utils/auth";
 import { supabase } from "../utils/supabase";
 import "../styles/login.css";
-
+//Testing --
 function saveSupabaseUser(user, provider = "google") {
   if (!user) return;
 
@@ -20,7 +20,7 @@ function saveSupabaseUser(user, provider = "google") {
 function getAuthErrorFromUrl() {
   const searchParams = new URLSearchParams(window.location.search);
   const hashParams = new URLSearchParams(
-    window.location.hash.replace(/^#/, "")
+    window.location.hash.replace(/^#/, ""),
   );
 
   return (
@@ -51,7 +51,7 @@ export default function AuthCallbackPage() {
 
         const searchParams = new URLSearchParams(window.location.search);
         const hashParams = new URLSearchParams(
-          window.location.hash.replace(/^#/, "")
+          window.location.hash.replace(/^#/, ""),
         );
 
         let session = null;
@@ -63,9 +63,8 @@ export default function AuthCallbackPage() {
         if (code) {
           setStatusText("Đang hoàn tất đăng nhập...");
 
-          const { data, error } = await supabase.auth.exchangeCodeForSession(
-            code
-          );
+          const { data, error } =
+            await supabase.auth.exchangeCodeForSession(code);
 
           if (error) throw error;
 
@@ -114,7 +113,7 @@ export default function AuthCallbackPage() {
         setStatusText("Không thể hoàn tất đăng nhập.");
         setErrorText(
           error.message ||
-            "Phiên đăng nhập Google không hợp lệ. Vui lòng thử lại."
+            "Phiên đăng nhập Google không hợp lệ. Vui lòng thử lại.",
         );
       }
     };
